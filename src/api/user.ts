@@ -10,14 +10,14 @@ import type {
  * 用户登录
  */
 export function login(data: LoginReq): Promise<LoginRes> {
-  return http.post('/api/v1/user/login', data)
+  return http.post('/v1/user/login', data)
 }
 
 /**
  * 获取用户信息
  */
 export function getUserProfile(userId: string): Promise<User> {
-  return http.get('/api/v1/user/profile', { userId })
+  return http.get('/v1/user/profile', { userId })
 }
 
 /**
@@ -28,21 +28,21 @@ export function updateUserProfile(data: {
   nickname: string
   phone: string
 }): Promise<void> {
-  return http.put('/api/v1/user/profile', data)
+  return http.put('/v1/user/profile', data)
 }
 
 /**
  * 获取地址列表
  */
 export function getAddressList(userId: string): Promise<Address[]> {
-  return http.get('/api/v1/user/addresses', { userId })
+  return http.get('/v1/user/addresses', { userId })
 }
 
 /**
  * 添加地址
  */
 export function addAddress(data: Omit<Address, 'addressId'>): Promise<Address> {
-  return http.post('/api/v1/user/address', data)
+  return http.post('/v1/user/address', data)
 }
 
 /**
@@ -52,19 +52,19 @@ export function updateAddress(
   addressId: string,
   data: Omit<Address, 'addressId'>
 ): Promise<void> {
-  return http.put(`/api/v1/user/address/${addressId}`, data)
+  return http.put(`/v1/user/address/${addressId}`, data)
 }
 
 /**
  * 删除地址
  */
 export function deleteAddress(addressId: string, userId: string): Promise<void> {
-  return http.delete(`/api/v1/user/address/${addressId}`, { userId })
+  return http.delete(`/v1/user/address/${addressId}`, { userId })
 }
 
 /**
  * 设置默认地址
  */
 export function setDefaultAddress(addressId: string): Promise<void> {
-  return http.post(`/api/v1/user/address/${addressId}/default`)
+  return http.post(`/v1/user/address/${addressId}/default`)
 }

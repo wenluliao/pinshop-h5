@@ -1,15 +1,17 @@
 import Request from 'luch-request'
 import type { Result } from '@/types'
 
-// 配置基础URL（开发环境使用localhost，需要确保Clash代理绕过localhost）
+// 配置基础URL（开发环境使用相对路径，通过vite代理转发）
 const baseURL = import.meta.env.DEV
-  ? 'http://localhost:8080'
+  ? '/api'
   : 'https://api.pinshop.com'
 
 // 创建请求实例
 const http = new Request({
   baseURL,
   timeout: 30000,
+  // H5环境下使用浏览器原生XMLHttpRequest，确保能通过Vite代理
+  adapter: process.env.UNI_PLATFORM === 'h5' ? 'http' : undefined,
   header: {
     'Content-Type': 'application/json'
   }
