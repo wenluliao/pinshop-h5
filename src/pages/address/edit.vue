@@ -26,28 +26,65 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { addAddress, updateAddress } from '@/api/user'
+import { useUserStore } from '@/stores'
 
+const userStore = useUserStore()
 const form = ref({
   receiverName: '',
   receiverPhone: '',
   region: '',
   detailAddress: '',
-  isDefault: false
+  isDefault: 0  // 0: 非默认, 1: 默认
 })
 
 const onDefaultChange = (e: any) => {
-  form.value.isDefault = e.detail.value
+  form.value.isDefault = e.detail.value ? 1 : 0
 }
 
-const onSave = () => {
-  console.log('保存地址', form.value)
-  uni.showToast({
-    title: '保存成功',
-    icon: 'success'
-  })
-  setTimeout(() => {
-    uni.navigateBack()
-  }, 1500)
+const onSave = async () => {
+  // 表单验证
+  if (!form.value.receiverName) {
+    return uni.showToast({ title: '请输入收货人', icon: 'none' })
+  }
+  if (!form.value.receiverPhone) {
+    return uni.showToast({ title: '请输入手机号', icon: 'none' })
+  }
+  if (!form.value.region) {
+    return uni.showToast({ title: '请选择地区', icon: 'none' })
+  }
+  if (!form.value.detailAddress) {
+    return uni.showToast({ title: '请输入详细地址', icon: 'none' })
+  }
+
+  try {
+    const userId = userStore.userInfo?.userId
+    if (!userId) {
+      return uni.showToast({ title: '请先登录', icon: 'none' })
+    }
+
+    const addressData = {
+      ...form.value,
+      userId
+    }
+
+    await addAddress(addressData)
+
+    uni.showToast({
+      title: '保存成功',
+      icon: 'success'
+    })
+
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1500)
+  } catch (error: any) {
+    console.error('保存地址失败:', error)
+    uni.showToast({
+      title: error.message || '保存失败',
+      icon: 'none'
+    })
+  }
 }
 </script>
 
