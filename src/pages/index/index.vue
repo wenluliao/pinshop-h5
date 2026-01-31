@@ -1,103 +1,98 @@
 <template>
   <view class="index-page">
-    <!-- 搜索栏 -->
-    <view class="search-bar" @tap="goSearch">
-      <view class="search-input">
-        <text class="search-icon uni-icon">&#xe62c;</text>
-        <text class="search-placeholder">搜索商品</text>
+    <!-- 状态栏占位 -->
+    <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
+
+    <!-- 顶部搜索栏 -->
+    <view class="search-bar-section">
+      <view class="search-bar" @tap="goSearch">
+        <view class="search-input">
+          <text class="search-icon">🔍</text>
+          <text class="search-placeholder">搜索商品</text>
+        </view>
       </view>
     </view>
 
-    <!-- 轮播图 -->
-    <swiper class="banner-swiper" autoplay circular interval="3000">
-      <swiper-item v-for="(banner, index) in banners" :key="index">
-        <image class="banner-image" :src="banner" mode="aspectFill" />
-      </swiper-item>
-    </swiper>
+    <!-- 主内容区：左右分栏 -->
+    <view class="main-content">
+      <!-- 左侧分类列表 -->
+      <scroll-view class="category-sidebar" scroll-y>
+        <view
+          v-for="category in categories"
+          :key="category.id"
+          class="category-item"
+          :class="{ active: selectedCategoryId === category.id }"
+          @tap="selectCategory(category.id)"
+        >
+          <text class="category-icon">{{ category.icon }}</text>
+          <text class="category-name">{{ category.name }}</text>
+        </view>
+      </scroll-view>
 
-    <!-- 时间段选择 -->
-    <scroll-view class="time-slots" scroll-x>
-      <view
-        v-for="(slot, index) in timeSlots"
-        :key="index"
-        class="time-slot-item"
-        :class="{ active: currentTimeSlot === slot }"
-        @tap="selectTimeSlot(slot)"
-      >
-        <text class="slot-time">{{ slot }}</text>
-        <text class="slot-label">{{ getSlotLabel(slot) }}</text>
-      </view>
-    </scroll-view>
+      <!-- 右侧商品列表 -->
+      <scroll-view class="product-content" scroll-y @scrolltolower="loadMore">
+        <!-- 商品网格 -->
+        <view class="product-grid">
+          <ProductCard
+            v-for="product in products"
+            :key="product.skuId"
+            :product="product"
+            @tap="goDetail"
+          />
+        </view>
 
-    <!-- 商品列表 -->
-    <view class="product-list">
-      <view class="section-header">
-        <text class="section-title">秒杀商品</text>
-        <Countdown :end-time="flashEndTime" label="本场结束" />
-      </view>
-
-      <view class="product-grid">
-        <ProductCard
-          v-for="product in products"
-          :key="product.skuId"
-          :product="product"
-          :show-stock="true"
-          :show-countdown="true"
-          @tap="goDetail"
-        />
-      </view>
-
-      <!-- 加载状态 -->
-      <view class="load-more" v-if="!finished">
-        <uni-load-more :status="loadingStatus" />
-      </view>
+        <!-- 加载状态 -->
+        <view class="load-more" v-if="!finished">
+          <text class="loading-text">{{ loading ? '加载中...' : '下拉加载更多' }}</text>
+        </view>
+        <view class="no-more" v-else>
+          <text class="no-more-text">没有更多了</text>
+        </view>
+      </scroll-view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { onLoad, onReachBottom } from '@dcloudio/uni-app'
 import type { Product } from '@/types'
 import { getFlashList } from '@/api/product'
+import { getCategoryList } from '@/api/category'
 import ProductCard from '@/components/ProductCard.vue'
-import Countdown from '@/components/Countdown.vue'
 
-// 数据
-const banners = ref([
-  'https://picsum.photos/750/360?random=1',
-  'https://picsum.photos/750/360?random=2',
-  'https://picsum.photos/750/360?random=3'
+// 状态栏高度
+const statusBarHeight = ref(0)
+
+// 分类数据（包含推广分类）
+const categories = ref([
+  { id: 0, name: '全部商品', icon: '🏠' },
+  { id: -1, name: '每日特惠', icon: '🔥' },
+  { id: -2, name: '新品上市', icon: '✨' },
+  { id: 1, name: '叶菜类', icon: '🥬' },
+  { id: 2, name: '根茎类', icon: '🥕' },
+  { id: 3, name: '葱姜蒜', icon: '🧅' },
+  { id: 4, name: '辣椒类', icon: '🌶️' },
+  { id: 5, name: '茄果类', icon: '🍆' },
+  { id: 6, name: '瓜果类', icon: '🥒' },
+  { id: 7, name: '豆类', icon: '🫘' },
+  { id: 8, name: '菌菇类', icon: '🍄' }
 ])
 
-const timeSlots = ref(['08:00', '12:00', '20:00'])
-const currentTimeSlot = ref('12:00')
-const flashEndTime = ref(Date.now() + 3600000) // 1小时后结束
-
+const selectedCategoryId = ref(0)
 const products = ref<Product[]>([])
 const loading = ref(false)
 const finished = ref(false)
 
-const loadingStatus = ref<'more' | 'loading' | 'noMore'>('more')
-
-// 获取时间段标签
-const getSlotLabel = (slot: string) => {
-  const now = new Date()
-  const [hour] = slot.split(':').map(Number)
-  const currentHour = now.getHours()
-
-  if (hour > currentHour) {
-    return '即将开始'
-  } else if (hour === currentHour || currentHour - hour < 2) {
-    return '抢购中'
-  } else {
-    return '已结束'
-  }
+// 获取系统信息
+const getSystemInfo = () => {
+  const systemInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = systemInfo.statusBarHeight || 0
 }
 
-// 选择时间段
-const selectTimeSlot = (slot: string) => {
-  currentTimeSlot.value = slot
+// 选择分类
+const selectCategory = (categoryId: number) => {
+  selectedCategoryId.value = categoryId
   loadProducts(true)
 }
 
@@ -106,10 +101,10 @@ const loadProducts = async (reset: boolean = false) => {
   if (loading.value) return
 
   loading.value = true
-  loadingStatus.value = 'loading'
 
   try {
-    const list = await getFlashList(currentTimeSlot.value)
+    // 这里使用秒杀接口作为示例，实际应该调用分类商品接口
+    const list = await getFlashList('12:00')
 
     if (reset) {
       products.value = list
@@ -117,17 +112,23 @@ const loadProducts = async (reset: boolean = false) => {
       products.value = [...products.value, ...list]
     }
 
-    // 设置结束时间（假设1小时后）
-    if (list.length > 0 && list[0].flashEndTime) {
-      flashEndTime.value = list[0].flashEndTime
-    }
-
+    // 模拟没有更多数据
     finished.value = true
-    loadingStatus.value = 'noMore'
   } catch (error) {
     console.error('加载商品失败:', error)
+    uni.showToast({
+      title: '加载失败',
+      icon: 'none'
+    })
   } finally {
     loading.value = false
+  }
+}
+
+// 加载更多
+const loadMore = () => {
+  if (!finished.value && !loading.value) {
+    loadProducts()
   }
 }
 
@@ -145,125 +146,125 @@ const goDetail = (product: Product) => {
 
 // 页面生命周期
 onLoad(() => {
+  getSystemInfo()
   loadProducts(true)
 })
 
-onPullDownRefresh(() => {
-  loadProducts(true).then(() => {
-    uni.stopPullDownRefresh()
-  })
-})
-
 onReachBottom(() => {
-  if (!finished.value && !loading.value) {
-    loadProducts()
-  }
+  loadMore()
 })
 </script>
 
 <style lang="scss" scoped>
 .index-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #f5f5f5;
 }
 
-.search-bar {
-  padding: 20rpx 32rpx;
+/* 状态栏占位 */
+.status-bar {
   background: #fff;
-
-  &-input {
-    display: flex;
-    align-items: center;
-    height: 64rpx;
-    padding: 0 24rpx;
-    background: #f5f5f5;
-    border-radius: 32rpx;
-  }
-
-  &-icon {
-    margin-right: 12rpx;
-    font-size: 32rpx;
-    color: #999;
-  }
-
-  &-placeholder {
-    font-size: 28rpx;
-    color: #999;
-  }
 }
 
-.banner-swiper {
-  width: 100%;
-  height: 360rpx;
+/* 搜索栏 */
+.search-bar-section {
+  padding: 16rpx 24rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #eee;
 }
 
-.banner-image {
-  width: 100%;
-  height: 100%;
-}
-
-.time-slots {
+.search-bar {
   display: flex;
-  white-space: nowrap;
-  padding: 24rpx 32rpx;
-  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+  align-items: center;
 }
 
-.time-slot-item {
-  display: inline-flex;
+.search-input {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 64rpx;
+  padding: 0 24rpx;
+  background: #f5f5f5;
+  border-radius: 32rpx;
+}
+
+.search-icon {
+  font-size: 32rpx;
+  margin-right: 12rpx;
+}
+
+.search-placeholder {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 主内容区 */
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* 左侧分类栏 */
+.category-sidebar {
+  width: 160rpx;
+  background: #fff;
+  border-right: 1rpx solid #eee;
+}
+
+.category-item {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16rpx 32rpx;
-  margin-right: 16rpx;
-  border-radius: 12rpx;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-
-  &.active {
-    background: #fff;
-    color: #ff6b6b;
-  }
-
-  &:last-child {
-    margin-right: 0;
-  }
+  justify-content: center;
+  padding: 30rpx 0;
+  border-left: 6rpx solid transparent;
+  transition: all 0.2s;
 }
 
-.slot-time {
-  font-size: 32rpx;
-  font-weight: bold;
+.category-item.active {
+  background: #fff5f5;
+  border-left-color: #ff6b6b;
 }
 
-.slot-label {
-  font-size: 22rpx;
-  margin-top: 4rpx;
-  opacity: 0.8;
+.category-icon {
+  font-size: 40rpx;
+  margin-bottom: 8rpx;
 }
 
-.product-list {
-  padding: 24rpx 32rpx;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24rpx;
-}
-
-.section-title {
-  font-size: 36rpx;
-  font-weight: bold;
+.category-name {
+  font-size: 24rpx;
   color: #333;
 }
 
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24rpx;
+.category-item.active .category-name {
+  color: #ff6b6b;
+  font-weight: 600;
 }
 
-.load-more {
-  margin-top: 32rpx;
+/* 右侧商品区 */
+.product-content {
+  flex: 1;
+  padding: 16rpx;
+}
+
+.product-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.load-more,
+.no-more {
+  padding: 40rpx 0;
+  text-align: center;
+}
+
+.loading-text,
+.no-more-text {
+  font-size: 24rpx;
+  color: #999;
 }
 </style>
