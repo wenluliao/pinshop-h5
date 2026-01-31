@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
+import { useCartStore } from '@/stores'
+import { useUserStore } from '@/stores'
+
+const cartStore = useCartStore()
+const userStore = useUserStore()
 
 onLaunch(() => {
   console.log('App Launch')
@@ -7,6 +12,11 @@ onLaunch(() => {
 
 onShow(() => {
   console.log('App Show')
+
+  // 如果用户已登录，加载购物车数据
+  if (userStore.token && !cartStore.loaded) {
+    cartStore.loadCart()
+  }
 })
 
 onHide(() => {
