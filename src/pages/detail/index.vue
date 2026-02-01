@@ -8,14 +8,14 @@
     </swiper>
 
     <!-- 秒杀信息 -->
-    <view v-if="product.flashPrice" class="flash-info">
+    <view v-if="product.flashPrice && product.flashEndTime" class="flash-info">
       <view class="flash-price">
         <text class="price-symbol">¥</text>
         <text class="price-integer">{{ integerPart(product.flashPrice) }}</text>
         <text class="price-decimal">.{{ decimalPart(product.flashPrice) }}</text>
-        <text class="price-original">¥{{ product.salePrice }}</text>
+        <text class="price-original">¥{{ product.salePrice?.toFixed(2) || '0.00' }}</text>
       </view>
-      <Countdown :end-time="product.flashEndTime!" label="距结束" />
+      <Countdown :end-time="product.flashEndTime" label="距结束" />
       <ProgressBar :current="product.sales || 0" :total="product.stock + (product.sales || 0)" />
     </view>
 
@@ -34,8 +34,9 @@
 
       <view class="product-footer">
         <text class="product-price price-color">
-          ¥{{ (product.flashPrice || product.salePrice).toFixed(2) }}
+          ¥{{ displayPrice.toFixed(2) }}
         </text>
+        <text v-if="product.flashPrice" class="product-original-price">¥{{ product.salePrice?.toFixed(2) || '0.00' }}</text>
         <text class="product-stock">库存{{ product.stock }}件</text>
       </view>
     </view>
@@ -129,6 +130,11 @@ const skuSelector = ref()
 const buyType = ref<'normal' | 'flash'>('normal')
 
 const cartCount = computed(() => cartStore.totalCount)
+
+// 显示价格（优先显示秒杀价）
+const displayPrice = computed(() => {
+  return product.value.flashPrice || product.value.salePrice || 0
+})
 
 // 加载商品详情
 const loadDetail = async (skuId: number) => {
