@@ -27,28 +27,28 @@
       <view class="order-types">
         <view class="order-type" @tap="goOrderList(10)">
           <view class="type-icon-wrapper">
-            <text class="uni-icon type-icon">&#xe688;</text>
+            <text class="type-icon">💰</text>
             <text v-if="orderCount.unpaid > 0" class="type-badge">{{ orderCount.unpaid }}</text>
           </view>
           <text class="type-label">待支付</text>
         </view>
         <view class="order-type" @tap="goOrderList(20)">
           <view class="type-icon-wrapper">
-            <text class="uni-icon type-icon">&#xe69a;</text>
+            <text class="type-icon">📦</text>
             <text v-if="orderCount.pending > 0" class="type-badge">{{ orderCount.pending }}</text>
           </view>
           <text class="type-label">待发货</text>
         </view>
         <view class="order-type" @tap="goOrderList(30)">
           <view class="type-icon-wrapper">
-            <text class="uni-icon type-icon">&#xe695;</text>
+            <text class="type-icon">🚚</text>
             <text v-if="orderCount.shipped > 0" class="type-badge">{{ orderCount.shipped }}</text>
           </view>
           <text class="type-label">待收货</text>
         </view>
         <view class="order-type" @tap="goOrderList(0)">
           <view class="type-icon-wrapper">
-            <text class="uni-icon type-icon">&#xe64a;</text>
+            <text class="type-icon">✅</text>
           </view>
           <text class="type-label">已完成</text>
         </view>
@@ -59,41 +59,34 @@
     <view class="menu-list">
       <view class="menu-item" @tap="goAddress">
         <view class="menu-left">
-          <text class="menu-icon uni-icon">&#xe611;</text>
+          <text class="menu-icon">📍</text>
           <text class="menu-label">收货地址</text>
         </view>
-        <text class="menu-arrow uni-icon">&#xe6a1;</text>
-      </view>
-      <view class="menu-item" @tap="goMyGroups">
-        <view class="menu-left">
-          <text class="menu-icon uni-icon">&#xe629;</text>
-          <text class="menu-label">我的拼团</text>
-        </view>
-        <text class="menu-arrow uni-icon">&#xe6a1;</text>
+        <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goCart">
         <view class="menu-left">
-          <text class="menu-icon uni-icon">&#xe607;</text>
+          <text class="menu-icon">🛒</text>
           <text class="menu-label">购物车</text>
         </view>
         <view class="menu-right">
           <text v-if="cartCount > 0" class="menu-badge">{{ cartCount }}</text>
-          <text class="menu-arrow uni-icon">&#xe6a1;</text>
+          <text class="menu-arrow">›</text>
         </view>
       </view>
       <view class="menu-item" @tap="contactService">
         <view class="menu-left">
-          <text class="menu-icon uni-icon">&#xe693;</text>
+          <text class="menu-icon">💬</text>
           <text class="menu-label">联系客服</text>
         </view>
-        <text class="menu-arrow uni-icon">&#xe6a1;</text>
+        <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @tap="showAbout">
         <view class="menu-left">
-          <text class="menu-icon uni-icon">&#xe604;</text>
+          <text class="menu-icon">ℹ️</text>
           <text class="menu-label">关于我们</text>
         </view>
-        <text class="menu-arrow uni-icon">&#xe6a1;</text>
+        <text class="menu-arrow">›</text>
       </view>
     </view>
 
@@ -182,20 +175,6 @@ const goAddress = () => {
   })
 }
 
-// 跳转我的拼团
-const goMyGroups = () => {
-  if (!userStore.isLogin) {
-    uni.showToast({
-      title: '请先登录',
-      icon: 'none'
-    })
-    return
-  }
-  uni.navigateTo({
-    url: '/pages/group/my'
-  })
-}
-
 // 跳转购物车
 const goCart = () => {
   uni.switchTab({
@@ -205,9 +184,8 @@ const goCart = () => {
 
 // 联系客服
 const contactService = () => {
-  uni.showToast({
-    title: '客服功能开发中',
-    icon: 'none'
+  uni.navigateTo({
+    url: '/pages/customer-service/index'
   })
 }
 

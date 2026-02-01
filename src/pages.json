@@ -82,6 +82,13 @@
         "navigationBarTitleText": "登录",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/customer-service/index",
+      "style": {
+        "navigationBarTitleText": "联系客服",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {
