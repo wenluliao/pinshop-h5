@@ -7,6 +7,9 @@ interface CartItem {
   skuId: number
   title: string
   imgUrl: string
+  salePrice: number
+  originalPrice?: number
+  weightSpec?: string
   price: number
   count: number
   selected: boolean
@@ -18,9 +21,31 @@ interface CartState {
   loaded: boolean
 }
 
+// 从localStorage加载购物车
+const loadCartFromStorage = (): CartItem[] => {
+  try {
+    const data = uni.getStorageSync('pinshop-cart')
+    if (data) {
+      return JSON.parse(data)
+    }
+  } catch (error) {
+    console.error('加载购物车数据失败:', error)
+  }
+  return []
+}
+
+// 保存购物车到localStorage
+const saveCartToStorage = (items: CartItem[]) => {
+  try {
+    uni.setStorageSync('pinshop-cart', JSON.stringify(items))
+  } catch (error) {
+    console.error('保存购物车数据失败:', error)
+  }
+}
+
 export const useCartStore = defineStore('cart', {
   state: (): CartState => ({
-    items: [],
+    items: loadCartFromStorage(),
     loaded: false
   }),
 
@@ -35,7 +60,7 @@ export const useCartStore = defineStore('cart', {
     selectedTotal: (state) =>
       state.items
         .filter(item => item.selected)
-        .reduce((total, item) => total + item.price * item.count, 0),
+        .reduce((total, item) => total + (item.salePrice || item.price) * item.count, 0),
 
     // 总数量
     totalCount: (state) => state.items.reduce((sum, item) => sum + item.count, 0),
@@ -70,25 +95,38 @@ export const useCartStore = defineStore('cart', {
     /**
      * 添加到购物车
      */
-    async addToCart(product: Product, count: number = 1) {
+    async addToCart(product: Product | any, count: number = 1) {
       try {
-        await CartApi.addToCart({ skuId: product.skuId, count })
+        // 先尝试调用后端API（如果后端实现的话）
+        try {
+          await CartApi.addToCart({ skuId: product.skuId, count })
+        } catch (apiError) {
+          // 后端API未实现或失败，仅使用本地存储
+          console.log('后端API调用失败，使用本地存储')
+        }
 
         // 更新本地状态
         const existingItem = this.items.find(item => item.skuId === product.skuId)
         if (existingItem) {
           existingItem.count += count
+          // 保存到localStorage
+          saveCartToStorage(this.items)
         } else {
           this.items.push({
-            id: 0,
+            id: Date.now(),
             skuId: product.skuId,
             title: product.title,
             imgUrl: product.imgUrl,
+            salePrice: product.salePrice,
+            originalPrice: product.originalPrice,
+            weightSpec: product.weightSpec,
             price: product.salePrice,
             count,
-            selected: false,
-            stock: product.stock
+            selected: true, // 默认选中
+            stock: product.stock || 999
           })
+          // 保存到localStorage
+          saveCartToStorage(this.items)
         }
       } catch (error) {
         console.error('添加到购物车失败:', error)
@@ -101,8 +139,16 @@ export const useCartStore = defineStore('cart', {
      */
     async removeFromCart(skuId: number) {
       try {
-        await CartApi.removeFromCart(skuId)
+        // 尝试调用后端API
+        try {
+          await CartApi.removeFromCart(skuId)
+        } catch (apiError) {
+          console.log('后端API调用失败，使用本地存储')
+        }
+        // 更新本地状态
         this.items = this.items.filter(item => item.skuId !== skuId)
+        // 保存到localStorage
+        saveCartToStorage(this.items)
       } catch (error) {
         console.error('从购物车移除失败:', error)
         throw error
@@ -117,11 +163,18 @@ export const useCartStore = defineStore('cart', {
         if (count <= 0) {
           await this.removeFromCart(skuId)
         } else {
-          await CartApi.updateCartCount({ skuId, count })
+          // 尝试调用后端API
+          try {
+            await CartApi.updateCartCount({ skuId, count })
+          } catch (apiError) {
+            console.log('后端API调用失败，使用本地存储')
+          }
 
           const item = this.items.find(item => item.skuId === skuId)
           if (item) {
             item.count = count
+            // 保存到localStorage
+            saveCartToStorage(this.items)
           }
         }
       } catch (error) {
@@ -135,11 +188,18 @@ export const useCartStore = defineStore('cart', {
      */
     async toggleSelect(skuId: number) {
       try {
-        await CartApi.toggleSelect(skuId)
+        // 尝试调用后端API
+        try {
+          await CartApi.toggleSelect(skuId)
+        } catch (apiError) {
+          console.log('后端API调用失败，使用本地存储')
+        }
 
         const item = this.items.find(item => item.skuId === skuId)
         if (item) {
           item.selected = !item.selected
+          // 保存到localStorage
+          saveCartToStorage(this.items)
         }
       } catch (error) {
         console.error('切换选中状态失败:', error)
@@ -153,11 +213,18 @@ export const useCartStore = defineStore('cart', {
     async toggleSelectAll() {
       try {
         const selected = !this.isAllSelected
-        await CartApi.toggleSelectAll(selected)
+        // 尝试调用后端API
+        try {
+          await CartApi.toggleSelectAll(selected)
+        } catch (apiError) {
+          console.log('后端API调用失败，使用本地存储')
+        }
 
         this.items.forEach(item => {
           item.selected = selected
         })
+        // 保存到localStorage
+        saveCartToStorage(this.items)
       } catch (error) {
         console.error('全选操作失败:', error)
         throw error

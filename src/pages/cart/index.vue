@@ -30,8 +30,12 @@
 
             <view class="item-info">
               <text class="item-title text-ellipsis-2">{{ item.title }}</text>
+              <text v-if="item.weightSpec" class="item-spec">{{ item.weightSpec }}</text>
               <view class="item-footer">
-                <text class="item-price price-color">¥{{ item.salePrice.toFixed(2) }}</text>
+                <view class="price-wrapper">
+                  <text class="item-price price-color">¥{{ item.salePrice.toFixed(2) }}</text>
+                  <text v-if="item.originalPrice" class="item-original">¥{{ item.originalPrice.toFixed(2) }}</text>
+                </view>
                 <view class="item-stepper">
                   <view
                     class="stepper-btn"
@@ -172,7 +176,7 @@ const checkout = () => {
   background: #fafafa;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 .cart-list {
@@ -243,7 +247,7 @@ const checkout = () => {
 }
 
 .cart-items {
-  padding: 24rpx;
+  padding: 16rpx 24rpx;
 }
 
 // 商品卡片动画
@@ -266,18 +270,18 @@ const checkout = () => {
   display: flex;
   align-items: center;
   background: #fff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
   position: relative;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   overflow: hidden;
 
   // 选中状态
   &.item-selected {
     border: 2rpx solid #ff6b6b;
-    box-shadow: 0 8rpx 24rpx rgba(255, 107, 107, 0.15);
+    box-shadow: 0 4rpx 16rpx rgba(255, 107, 107, 0.15);
   }
 
   &:active {
@@ -287,20 +291,20 @@ const checkout = () => {
 
 // 复选框优化 - 圆角方形
 .item-checkbox {
-  width: 40rpx;
-  height: 40rpx;
+  width: 36rpx;
+  height: 36rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2rpx solid #ddd;
   border-radius: 8rpx;
-  margin-right: 24rpx;
+  margin-right: 20rpx;
   flex-shrink: 0;
   transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   background: #fff;
 
   .checkbox-icon {
-    font-size: 28rpx;
+    font-size: 24rpx;
     color: #fff;
     opacity: 0;
     transform: scale(0);
@@ -320,9 +324,9 @@ const checkout = () => {
 }
 
 .item-image {
-  width: 200rpx;
-  height: 200rpx;
-  border-radius: 16rpx;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
   flex-shrink: 0;
   background: #f5f5f5;
 }
@@ -331,48 +335,66 @@ const checkout = () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 24rpx;
+  margin-left: 20rpx;
   overflow: hidden;
-  min-height: 200rpx;
+  min-height: 160rpx;
 }
 
 .item-title {
-  font-size: 30rpx;
+  font-size: 28rpx;
   color: #1a1a1a;
-  line-height: 1.5;
-  margin-bottom: auto;
+  line-height: 1.4;
+  margin-bottom: 8rpx;
   font-weight: 500;
+}
+
+.item-spec {
+  font-size: 22rpx;
+  color: #999;
+  margin-bottom: auto;
 }
 
 .item-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 24rpx;
+  margin-top: 16rpx;
+}
+
+.price-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
 }
 
 .item-price {
-  font-size: 40rpx;
+  font-size: 36rpx;
   font-weight: 700;
   letter-spacing: -0.5rpx;
+}
+
+.item-original {
+  font-size: 22rpx;
+  color: #999;
+  text-decoration: line-through;
 }
 
 // 数量选择器优化
 .item-stepper {
   display: flex;
   align-items: center;
-  border-radius: 44rpx;
+  border-radius: 36rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
 }
 
 .stepper-btn {
-  width: 64rpx;
-  height: 64rpx;
+  width: 56rpx;
+  height: 56rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: #666;
   background: #f7f7f7;
@@ -389,12 +411,12 @@ const checkout = () => {
 }
 
 .stepper-value {
-  width: 100rpx;
-  height: 64rpx;
+  width: 80rpx;
+  height: 56rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: #333;
   background: #fff;
@@ -404,8 +426,8 @@ const checkout = () => {
 
 .item-delete {
   position: absolute;
-  top: 24rpx;
-  right: 24rpx;
+  top: 20rpx;
+  right: 20rpx;
   padding: 12rpx;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -426,31 +448,19 @@ const checkout = () => {
   opacity: 1;
 }
 
-// 悬浮结算栏
+// 悬浮结算栏 - 参考美团设计
 .bottom-bar {
   position: fixed;
-  bottom: 24rpx;
-  left: 24rpx;
-  right: 24rpx;
+  bottom: calc(100rpx + env(safe-area-inset-bottom)); // 在底部导航栏上方
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
-  padding: 24rpx 32rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  padding: 20rpx 24rpx;
   background: #fff;
-  border-radius: 24rpx;
-  box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.1);
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  border-top: 1rpx solid #eee;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+  z-index: 999; // 确保在导航栏下方但在其他元素上方
 }
 
 .select-all {
@@ -462,12 +472,12 @@ const checkout = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40rpx;
-    height: 40rpx;
+    width: 36rpx;
+    height: 36rpx;
     border: 2rpx solid #ddd;
     border-radius: 8rpx;
     margin-right: 12rpx;
-    font-size: 28rpx;
+    font-size: 24rpx;
     color: #fff;
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -485,7 +495,7 @@ const checkout = () => {
 }
 
 .select-all-label {
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: #666;
   font-weight: 500;
 }
@@ -495,32 +505,32 @@ const checkout = () => {
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
+  padding-right: 24rpx;
 }
 
 .total-label {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #999;
   margin-right: 8rpx;
 }
 
 .total-value {
-  font-size: 44rpx;
+  font-size: 40rpx;
   font-weight: 700;
   letter-spacing: -0.5rpx;
 }
 
 .btn-checkout {
-  margin-left: 24rpx;
   padding: 0 48rpx;
-  height: 80rpx;
-  line-height: 80rpx;
+  height: 72rpx;
+  line-height: 72rpx;
   background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
   color: #fff;
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 600;
-  border-radius: 40rpx;
+  border-radius: 36rpx;
   border: none;
-  box-shadow: 0 8rpx 24rpx rgba(255, 107, 107, 0.4);
+  box-shadow: 0 6rpx 20rpx rgba(255, 107, 107, 0.4);
   transition: all 0.3s ease;
 
   &::after {
@@ -540,17 +550,8 @@ const checkout = () => {
   }
 }
 
-// 响应式适配
-@media (min-width: 768px) {
-  .cart-items {
-    max-width: 700rpx;
-    margin: 0 auto;
-  }
-
-  .bottom-bar {
-    max-width: calc(700rpx + 48rpx);
-    left: 50%;
-    transform: translateX(-50%);
-  }
+// 价格颜色
+.price-color {
+  color: #ff4444;
 }
 </style>

@@ -1,114 +1,154 @@
-import Request from 'luch-request'
 import type { Result } from '@/types'
 
-// 配置基础URL（开发环境使用相对路径，通过vite代理转发）
-const baseURL = import.meta.env.DEV
-  ? '/api'
-  : 'https://api.pinshop.com'
+/**
+ * 基于uni.request的HTTP请求工具
+ * 专为H5环境优化
+ */
+class HttpRequest {
+  private baseURL: string
 
-// 创建请求实例
-const http = new Request({
-  baseURL,
-  timeout: 30000,
-  // H5环境下使用浏览器原生XMLHttpRequest，确保能通过Vite代理
-  adapter: process.env.UNI_PLATFORM === 'h5' ? 'http' : undefined,
-  header: {
-    'Content-Type': 'application/json'
+  constructor() {
+    // 开发环境使用空字符串（通过Vite代理）
+    this.baseURL = import.meta.env.DEV ? '' : 'https://api.pinshop.com'
   }
-})
 
-// 请求拦截器
-http.interceptors.request.use(
-  (config) => {
-    // 添加 Token
-    const token = uni.getStorageSync('token')
-    if (token) {
-      config.header = {
-        ...config.header,
-        Authorization: `Bearer ${token}`
+  /**
+   * GET请求
+   */
+  get<T>(url: string, data?: any): Promise<T> {
+    return this.request<T>('GET', url, data)
+  }
+
+  /**
+   * POST请求
+   */
+  post<T>(url: string, data?: any): Promise<T> {
+    return this.request<T>('POST', url, data)
+  }
+
+  /**
+   * PUT请求
+   */
+  put<T>(url: string, data?: any): Promise<T> {
+    return this.request<T>('PUT', url, data)
+  }
+
+  /**
+   * DELETE请求
+   */
+  delete<T>(url: string, data?: any): Promise<T> {
+    return this.request<T>('DELETE', url, data)
+  }
+
+  /**
+   * 通用请求方法
+   */
+  private request<T>(
+    method: string,
+    url: string,
+    data?: any
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      // 构建完整URL
+      const fullUrl = this.baseURL + url
+
+      // 添加查询参数
+      let requestOptions: any = {
+        url: fullUrl,
+        method: method.toUpperCase(),
+        timeout: 30000,
+        header: {
+          'Content-Type': 'application/json'
+        }
       }
-    }
 
-    // 显示加载提示（可选）
-    if (!config.hideLoading) {
-      uni.showLoading({
-        title: '加载中...',
-        mask: true
-      })
-    }
-
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-// 响应拦截器
-http.interceptors.response.use(
-  (response) => {
-    // 隐藏加载提示
-    uni.hideLoading()
-
-    const { config, data } = response
-    const result = data as Result
-
-    // 业务成功
-    if (result.code === 200) {
-      return result.data
-    }
-
-    // 未登录 - 跳转登录页
-    if (result.code === 401) {
-      uni.removeStorageSync('token')
-      uni.removeStorageSync('userInfo')
-
-      uni.showToast({
-        title: '请先登录',
-        icon: 'none'
-      })
-
-      setTimeout(() => {
-        uni.navigateTo({
-          url: '/pages/profile/index'
+      // GET请求将数据放到url参数中
+      if (method.toUpperCase() === 'GET' && data) {
+        const params = new URLSearchParams()
+        Object.keys(data).forEach(key => {
+          if (data[key] !== null && data[key] !== undefined) {
+            params.append(key, String(data[key]))
+          }
         })
-      }, 1500)
+        const queryString = params.toString()
+        if (queryString) {
+          requestOptions.url += (fullUrl.includes('?') ? '&' : '?') + queryString
+        }
+      } else {
+        // POST/PUT/DELETE将数据放到body中
+        requestOptions.data = data
+      }
 
-      return Promise.reject(result)
-    }
+      // 添加Token
+      const token = uni.getStorageSync('token')
+      if (token) {
+        requestOptions.header.Authorization = `Bearer ${token}`
+      }
 
-    // 其他业务错误
-    uni.showToast({
-      title: result.message || '请求失败',
-      icon: 'none'
+      uni.request({
+        ...requestOptions,
+        success: (res: any) => {
+          try {
+            const result = res.data as Result
+
+            // 业务成功
+            if (result.code === 200) {
+              resolve(result.data as T)
+              return
+            }
+
+            // 未登录
+            if (result.code === 401) {
+              uni.removeStorageSync('token')
+              uni.removeStorageSync('userInfo')
+
+              uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+              })
+
+              reject(result)
+              return
+            }
+
+            // 其他业务错误
+            uni.showToast({
+              title: result.message || '请求失败',
+              icon: 'none'
+            })
+
+            reject(result)
+          } catch (error) {
+            console.error('Response parse error:', error)
+            reject(error)
+          }
+        },
+        fail: (err: any) => {
+          console.error('Request failed:', err)
+
+          let message = '网络请求失败'
+
+          if (err.errMsg) {
+            if (err.errMsg.includes('timeout')) {
+              message = '请求超时'
+            } else if (err.errMsg.includes('fail')) {
+              message = '网络连接失败'
+            }
+          }
+
+          uni.showToast({
+            title: message,
+            icon: 'none'
+          })
+
+          reject(err)
+        }
+      })
     })
-
-    return Promise.reject(result)
-  },
-  (error) => {
-    // 隐藏加载提示
-    uni.hideLoading()
-
-    console.error('Request Error:', error)
-
-    let message = '网络请求失败'
-
-    // 网络超时
-    if (error.errMsg.includes('timeout')) {
-      message = '请求超时，请稍后重试'
-    }
-    // 网络断开
-    else if (error.errMsg.includes('fail')) {
-      message = '网络连接失败，请检查网络'
-    }
-
-    uni.showToast({
-      title: message,
-      icon: 'none'
-    })
-
-    return Promise.reject(error)
   }
-)
+}
+
+// 创建并导出实例
+const http = new HttpRequest()
 
 export default http

@@ -70,6 +70,23 @@ export interface Product {
 }
 
 /**
+ * 分类商品（扩展版）
+ */
+export interface CategoryProduct {
+  skuId: number
+  title: string
+  subtitle?: string
+  imgUrl: string
+  salePrice: number
+  originalPrice?: number // 划线价
+  weightSpec?: string // "约500g/份"
+  stock: number
+  sales: number
+  inFlashSale?: boolean // 是否在秒杀中
+  flashPrice?: number // 秒杀价
+}
+
+/**
  * 商品详情
  */
 export interface ProductDetail extends Product {
@@ -289,3 +306,47 @@ export interface PageRes<T> {
   pageSize: number
   pages: number
 }
+
+/**
+ * 分类树节点
+ */
+export interface CategoryTree {
+  categoryId: number
+  categoryName: string
+  icon?: string
+  level: number // 1,2,3
+  parentId?: number
+  sortOrder: number
+  children?: CategoryTree[]
+}
+
+/**
+ * 商品标签
+ */
+export interface ProductTag {
+  tagId: number
+  tagName: string
+  tagType: number // 1,2,3
+  bgColor?: string // "#FF4444"
+  textColor?: string // "#FFFFFF"
+  borderColor?: string
+  fontSize?: string
+  iconUrl?: string
+  priority: number
+}
+
+/**
+ * 标签分组
+ */
+export interface TagsGroup {
+  [key: number]: ProductTag[] // key为tagType
+}
+
+/**
+ * 分类商品响应
+ */
+export interface CategoryProductRes {
+  total: number
+  products: CategoryProduct[]
+}
+

@@ -9,37 +9,63 @@
           mode="aspectFill"
           :lazy-load="true"
         />
+
+        <!-- 营销角标（左上角绝对定位） -->
+        <view
+          v-if="marketingTags.length > 0"
+          class="marketing-badge"
+          :style="{ background: marketingTags[0].bgColor, color: marketingTags[0].textColor }"
+        >
+          {{ marketingTags[0].tagName }}
+        </view>
       </view>
 
       <!-- 右侧商品信息 -->
       <view class="product-info">
         <text class="product-title">{{ product.title }}</text>
 
-        <view class="product-tags" v-if="product.tags && product.tags.length">
+        <!-- 副标题/卖点 -->
+        <text v-if="product.subtitle" class="product-subtitle">{{ product.subtitle }}</text>
+
+        <!-- 商品描述标签（横向排列） -->
+        <view class="product-tags" v-if="descriptionTags.length">
           <text
-            v-for="(tag, index) in product.tags"
-            :key="index"
+            v-for="tag in descriptionTags"
+            :key="tag.tagId"
             class="product-tag"
+            :style="{
+              background: tag.bgColor || '#FFF9E6',
+              color: tag.textColor || '#FF6B00',
+              borderColor: tag.borderColor || '#FF6B00'
+            }"
           >
-            {{ tag }}
+            {{ tag.tagName }}
           </text>
         </view>
 
         <view class="product-footer">
           <view class="price-info">
             <view class="product-price">
+              <!-- 秒杀价 -->
               <template v-if="product.flashPrice">
                 <text class="price-symbol">¥</text>
                 <text class="price-integer">{{ integerPart(product.flashPrice) }}</text>
                 <text class="price-decimal">.{{ decimalPart(product.flashPrice) }}</text>
                 <text class="price-original">¥{{ product.salePrice }}</text>
               </template>
+              <!-- 普通价格 + 划线价 -->
               <template v-else>
                 <text class="price-symbol">¥</text>
                 <text class="price-integer">{{ integerPart(product.salePrice) }}</text>
                 <text class="price-decimal">.{{ decimalPart(product.salePrice) }}</text>
+                <text v-if="product.originalPrice" class="price-original">
+                  ¥{{ product.originalPrice }}
+                </text>
               </template>
             </view>
+
+            <!-- 重量规格 -->
+            <text v-if="product.weightSpec" class="weight-spec">{{ product.weightSpec }}</text>
 
             <view v-if="showStock" class="product-stock">
               已抢{{ ((product.sales || 0) / (product.stock + (product.sales || 0)) * 100).toFixed(0) }}%
@@ -69,6 +95,17 @@
             </view>
           </view>
         </view>
+
+        <!-- 服务承诺标签（底部小字） -->
+        <view v-if="serviceTags.length" class="service-tags">
+          <text
+            v-for="tag in serviceTags"
+            :key="tag.tagId"
+            class="service-tag"
+          >
+            {{ tag.tagName }}
+          </text>
+        </view>
       </view>
     </view>
   </view>
@@ -76,29 +113,46 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Product } from '@/types'
+import type { Product, CategoryProduct, ProductTag } from '@/types'
 import Countdown from './Countdown.vue'
 import { useCartStore } from '@/stores'
 
 interface Props {
-  product: Product
+  product: Product | CategoryProduct
   showStock?: boolean
   showCountdown?: boolean
+  tags?: ProductTag[] // 商品标签列表
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showStock: false,
-  showCountdown: false
+  showCountdown: false,
+  tags: () => []
 })
 
 const emit = defineEmits<{
-  tap: [product: Product]
+  tap: [product: Product | CategoryProduct]
 }>()
 
 const cartStore = useCartStore()
 
 // 获取当前商品在购物车中的数量
 const cartCount = computed(() => cartStore.getItemCount(props.product.skuId))
+
+// 分类标签：营销角标(tagType=1)
+const marketingTags = computed(() => {
+  return props.tags.filter(t => t.tagType === 1).slice(0, 1) // 只显示第一个
+})
+
+// 分类标签：商品描述(tagType=2)
+const descriptionTags = computed(() => {
+  return props.tags.filter(t => t.tagType === 2).slice(0, 3) // 最多显示3个
+})
+
+// 分类标签：服务承诺(tagType=3)
+const serviceTags = computed(() => {
+  return props.tags.filter(t => t.tagType === 3).slice(0, 2) // 最多显示2个
+})
 
 const onTap = () => {
   emit('tap', props.product)
@@ -185,6 +239,18 @@ const decimalPart = (price: number) => (price % 1).toFixed(2).substring(2)
   height: 100%;
 }
 
+/* 营销角标：红底白字、大字体、左上角 */
+.marketing-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 6rpx 12rpx;
+  font-size: 22rpx;
+  font-weight: bold;
+  border-radius: 0 0 8rpx 0;
+  z-index: 10;
+}
+
 .product-info {
   flex: 1;
   display: flex;
@@ -205,6 +271,17 @@ const decimalPart = (price: number) => (price % 1).toFixed(2).substring(2)
   -webkit-box-orient: vertical;
 }
 
+.product-subtitle {
+  font-size: 22rpx;
+  color: #666;
+  margin-top: 4rpx;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 商品描述标签：黄底红字、边框、横向排列 */
 .product-tags {
   display: flex;
   flex-wrap: wrap;
@@ -213,12 +290,10 @@ const decimalPart = (price: number) => (price % 1).toFixed(2).substring(2)
 }
 
 .product-tag {
-  padding: 4rpx 8rpx;
-  background: #fff4f4;
-  color: #ff6b6b;
-  font-size: 18rpx;
+  padding: 4rpx 10rpx;
+  font-size: 20rpx;
   border-radius: 4rpx;
-  border: 1rpx solid #ffcece;
+  border: 1rpx solid;
   font-weight: 500;
 }
 
@@ -234,7 +309,7 @@ const decimalPart = (price: number) => (price % 1).toFixed(2).substring(2)
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
 .product-price {
@@ -244,28 +319,36 @@ const decimalPart = (price: number) => (price % 1).toFixed(2).substring(2)
   .price-symbol {
     font-size: 20rpx;
     font-weight: 600;
-    color: #ff6b6b;
+    color: #ff4444;
   }
 
   .price-integer {
-    font-size: 32rpx;
+    font-size: 36rpx;
     font-weight: 700;
-    color: #ff6b6b;
+    color: #ff4444;
     line-height: 1;
   }
 
   .price-decimal {
-    font-size: 20rpx;
+    font-size: 22rpx;
     font-weight: 600;
-    color: #ff6b6b;
+    color: #ff4444;
   }
 
+  /* 划线价：灰色删除线 */
   .price-original {
     margin-left: 6rpx;
-    font-size: 20rpx;
-    color: #bbb;
+    font-size: 22rpx;
+    color: #999;
     text-decoration: line-through;
   }
+}
+
+/* 重量规格 */
+.weight-spec {
+  font-size: 20rpx;
+  color: #666;
+  margin-left: 8rpx;
 }
 
 .product-stock {
@@ -276,6 +359,27 @@ const decimalPart = (price: number) => (price % 1).toFixed(2).substring(2)
 
 .product-countdown {
   margin-top: 4rpx;
+}
+
+/* 服务承诺标签：底部小字 */
+.service-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 6rpx;
+}
+
+.service-tag {
+  font-size: 18rpx;
+  color: #666;
+  display: flex;
+  align-items: center;
+
+  &:not(:last-child)::after {
+    content: '|';
+    margin-left: 12rpx;
+    color: #ddd;
+  }
 }
 
 /* 购物车控制按钮 */

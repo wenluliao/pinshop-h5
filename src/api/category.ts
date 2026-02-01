@@ -1,5 +1,6 @@
 // api/category.ts
 import http from '@/utils/request'
+import type { CategoryTree } from '@/types'
 
 export interface VegetableCategory {
   id: number
@@ -8,6 +9,11 @@ export interface VegetableCategory {
   icon: string
   imageUrl: string
   sortOrder: number
+}
+
+// 获取分类树（包含多级分类）
+export function getCategoryTree(): Promise<CategoryTree[]> {
+  return http.get('/v1/category/tree')
 }
 
 // 获取顶级分类

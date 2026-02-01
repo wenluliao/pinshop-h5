@@ -3,50 +3,72 @@
     <!-- 状态栏占位 -->
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
-    <!-- 顶部搜索栏 -->
+    <!-- 顶部：一级分类Tab -->
+    <view class="top-tabs">
+      <scroll-view class="tabs-scroll" scroll-x>
+        <view
+          v-for="tab in level1Categories"
+          :key="tab.categoryId"
+          class="tab-item"
+          :class="{ active: selectedLevel1Id === tab.categoryId }"
+          @tap="selectLevel1(tab.categoryId)"
+        >
+          <text class="tab-icon">{{ tab.icon }}</text>
+          <text class="tab-name">{{ tab.categoryName }}</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 搜索栏 -->
     <view class="search-bar-section">
       <view class="search-bar" @tap="goSearch">
-        <view class="search-input">
-          <text class="search-icon">🔍</text>
-          <text class="search-placeholder">搜索商品</text>
-        </view>
+        <text class="search-icon">🔍</text>
+        <text class="search-placeholder">搜索商品</text>
       </view>
     </view>
 
     <!-- 主内容区：左右分栏 -->
     <view class="main-content">
-      <!-- 左侧分类列表 -->
+      <!-- 左侧二级分类列表 -->
       <scroll-view class="category-sidebar" scroll-y>
         <view
-          v-for="category in categories"
-          :key="category.id"
+          v-for="category in level2Categories"
+          :key="category.categoryId"
           class="category-item"
-          :class="{ active: selectedCategoryId === category.id }"
-          @tap="selectCategory(category.id)"
+          :class="{ active: selectedCategoryId === category.categoryId }"
+          @tap="selectCategory(category.categoryId)"
         >
           <text class="category-icon">{{ category.icon }}</text>
-          <text class="category-name">{{ category.name }}</text>
+          <text class="category-name">{{ category.categoryName }}</text>
         </view>
       </scroll-view>
 
       <!-- 右侧商品列表 -->
       <scroll-view class="product-content" scroll-y @scrolltolower="loadMore">
-        <!-- 商品网格 -->
-        <view class="product-grid">
+        <!-- 加载状态 -->
+        <view v-if="loading" class="loading-container">
+          <text class="loading-text">加载中...</text>
+        </view>
+
+        <!-- 商品列表 -->
+        <view v-else-if="products.length > 0" class="product-list">
           <ProductCard
             v-for="product in products"
             :key="product.skuId"
             :product="product"
+            :tags="getProductTags(product.skuId)"
             @tap="goDetail"
           />
         </view>
 
-        <!-- 加载状态 -->
-        <view class="load-more" v-if="!finished">
-          <text class="loading-text">{{ loading ? '加载中...' : '下拉加载更多' }}</text>
-        </view>
-        <view class="no-more" v-else>
+        <!-- 无更多数据 -->
+        <view v-if="finished && products.length > 0" class="no-more">
           <text class="no-more-text">没有更多了</text>
+        </view>
+
+        <!-- 空状态 -->
+        <view v-if="!loading && products.length === 0" class="empty-state">
+          <text class="empty-text">暂无商品</text>
         </view>
       </scroll-view>
     </view>
@@ -54,35 +76,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { onLoad, onReachBottom } from '@dcloudio/uni-app'
-import type { Product } from '@/types'
-import { getFlashList } from '@/api/product'
-import { getCategoryList } from '@/api/category'
+import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import type { CategoryTree, CategoryProduct, ProductTag } from '@/types'
+import { getProductsByCategory } from '@/api/product'
+import { getCategoryTree } from '@/api/category'
+import { getAllTags } from '@/api/tag'
 import ProductCard from '@/components/ProductCard.vue'
 
 // 状态栏高度
 const statusBarHeight = ref(0)
 
-// 分类数据（包含推广分类）
-const categories = ref([
-  { id: 0, name: '全部商品', icon: '🏠' },
-  { id: -1, name: '每日特惠', icon: '🔥' },
-  { id: -2, name: '新品上市', icon: '✨' },
-  { id: 1, name: '叶菜类', icon: '🥬' },
-  { id: 2, name: '根茎类', icon: '🥕' },
-  { id: 3, name: '葱姜蒜', icon: '🧅' },
-  { id: 4, name: '辣椒类', icon: '🌶️' },
-  { id: 5, name: '茄果类', icon: '🍆' },
-  { id: 6, name: '瓜果类', icon: '🥒' },
-  { id: 7, name: '豆类', icon: '🫘' },
-  { id: 8, name: '菌菇类', icon: '🍄' }
-])
+// 分类树数据
+const categoryTree = ref<CategoryTree[]>([])
+const selectedLevel1Id = ref<number>(1)
+const selectedCategoryId = ref<number>(0)
 
-const selectedCategoryId = ref(0)
-const products = ref<Product[]>([])
+// 商品数据
+const products = ref<CategoryProduct[]>([])
 const loading = ref(false)
 const finished = ref(false)
+const currentPage = ref(1)
+const pageSize = 20
+
+// 商品标签映射
+const productTagsMap = ref<Map<number, ProductTag[]>>(new Map())
+const allTags = ref<ProductTag[]>([])
+
+// 一级分类（顶部Tab）
+const level1Categories = computed(() => {
+  if (!categoryTree.value || categoryTree.value.length === 0) return []
+  return categoryTree.value.map(cat => ({
+    categoryId: cat.categoryId,
+    categoryName: cat.categoryName,
+    icon: cat.icon || ''
+  }))
+})
+
+// 二级分类（左侧列表）
+const level2Categories = computed(() => {
+  const level1 = categoryTree.value.find(c => c.categoryId === selectedLevel1Id.value)
+  if (!level1 || !level1.children) return []
+  return level1.children
+})
 
 // 获取系统信息
 const getSystemInfo = () => {
@@ -90,8 +126,20 @@ const getSystemInfo = () => {
   statusBarHeight.value = systemInfo.statusBarHeight || 0
 }
 
-// 选择分类
+// 选择一级分类
+const selectLevel1 = (categoryId: number) => {
+  console.log('选择一级分类:', categoryId)
+  selectedLevel1Id.value = categoryId
+  // 默认选中该一级分类下的第一个二级分类
+  const level2 = level2Categories.value[0]
+  if (level2) {
+    selectCategory(level2.categoryId)
+  }
+}
+
+// 选择二级分类
 const selectCategory = (categoryId: number) => {
+  console.log('选择二级分类:', categoryId)
   selectedCategoryId.value = categoryId
   loadProducts(true)
 }
@@ -100,20 +148,35 @@ const selectCategory = (categoryId: number) => {
 const loadProducts = async (reset: boolean = false) => {
   if (loading.value) return
 
+  if (reset) {
+    currentPage.value = 1
+    finished.value = false
+    products.value = []
+  }
+
   loading.value = true
 
   try {
-    // 这里使用秒杀接口作为示例，实际应该调用分类商品接口
-    const list = await getFlashList('12:00')
+    console.log('加载商品, categoryId:', selectedCategoryId.value)
 
-    if (reset) {
-      products.value = list
+    const response = await getProductsByCategory({
+      categoryId: selectedCategoryId.value,
+      relationType: 2, // 2-营销分类（如今日特价）
+      sortBy: 'price_asc', // 价格升序
+      pageNum: currentPage.value,
+      pageSize: pageSize
+    })
+
+    console.log('商品数据:', response)
+
+    products.value = response.products
+
+    // 判断是否还有更多数据
+    if (products.value.length >= response.total) {
+      finished.value = true
     } else {
-      products.value = [...products.value, ...list]
+      currentPage.value++
     }
-
-    // 模拟没有更多数据
-    finished.value = true
   } catch (error) {
     console.error('加载商品失败:', error)
     uni.showToast({
@@ -127,32 +190,72 @@ const loadProducts = async (reset: boolean = false) => {
 
 // 加载更多
 const loadMore = () => {
-  if (!finished.value && !loading.value) {
-    loadProducts()
+  if (!loading.value && !finished.value) {
+    loadProducts(false)
   }
 }
 
-// 跳转搜索页
+// 跳转搜索
 const goSearch = () => {
-  uni.navigateTo({ url: '/pages/search/index' })
+  uni.navigateTo({
+    url: '/pages/search/index'
+  })
 }
 
-// 跳转详情页
-const goDetail = (product: Product) => {
+// 跳转商品详情
+const goDetail = (product: CategoryProduct) => {
   uni.navigateTo({
     url: `/pages/detail/index?skuId=${product.skuId}`
   })
 }
 
-// 页面生命周期
+// 获取商品标签
+const getProductTags = (skuId: number): ProductTag[] => {
+  return productTagsMap.value.get(skuId) || []
+}
+
+// 初始化
 onLoad(() => {
+  console.log('页面加载')
   getSystemInfo()
-  loadProducts(true)
+  loadData()
 })
 
-onReachBottom(() => {
-  loadMore()
-})
+const loadData = async () => {
+  try {
+    console.log('开始加载数据')
+
+    // 加载分类树
+    categoryTree.value = await getCategoryTree()
+    console.log('分类树加载完成:', categoryTree.value)
+
+    // 加载所有标签
+    try {
+      const tagsData = await getAllTags()
+      allTags.value = Object.values(tagsData).flat()
+      console.log('标签加载完成:', allTags.value.length)
+    } catch (e) {
+      console.log('加载标签失败，可能后端还未实现:', e)
+    }
+
+    // 默认选中第一个一级分类的第一个二级分类
+    const level1 = categoryTree.value[0]
+    if (level1) {
+      selectedLevel1Id.value = level1.categoryId
+
+      const level2 = level1.children?.[0]
+      if (level2) {
+        selectCategory(level2.categoryId)
+      }
+    }
+  } catch (error) {
+    console.error('初始化失败:', error)
+    uni.showToast({
+      title: '加载失败',
+      icon: 'none'
+    })
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -163,31 +266,64 @@ onReachBottom(() => {
   background: #f5f5f5;
 }
 
-/* 状态栏占位 */
 .status-bar {
   background: #fff;
 }
 
+/* 顶部一级分类Tab */
+.top-tabs {
+  background: #fff;
+  border-bottom: 1rpx solid #eee;
+  padding: 10rpx 0;
+}
+
+.tabs-scroll {
+  white-space: nowrap;
+  padding: 0 20rpx;
+}
+
+.tab-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 40rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 12rpx;
+  transition: all 0.2s;
+
+  &.active {
+    background: #ff4444;
+
+    .tab-name {
+      color: #fff;
+    }
+  }
+}
+
+.tab-icon {
+  font-size: 36rpx;
+  margin-bottom: 4rpx;
+}
+
+.tab-name {
+  font-size: 22rpx;
+  color: #333;
+  font-weight: 500;
+}
+
 /* 搜索栏 */
 .search-bar-section {
-  padding: 16rpx 24rpx;
   background: #fff;
+  padding: 16rpx 20rpx;
   border-bottom: 1rpx solid #eee;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
-}
-
-.search-input {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  height: 64rpx;
-  padding: 0 24rpx;
   background: #f5f5f5;
-  border-radius: 32rpx;
+  border-radius: 36rpx;
+  padding: 12rpx 24rpx;
 }
 
 .search-icon {
@@ -196,7 +332,7 @@ onReachBottom(() => {
 }
 
 .search-placeholder {
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: #999;
 }
 
@@ -207,10 +343,10 @@ onReachBottom(() => {
   overflow: hidden;
 }
 
-/* 左侧分类栏 */
+/* 左侧分类列表 */
 .category-sidebar {
-  width: 160rpx;
-  background: #fff;
+  width: 180rpx;
+  background: #f8f8f8;
   border-right: 1rpx solid #eee;
 }
 
@@ -218,53 +354,74 @@ onReachBottom(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 30rpx 0;
-  border-left: 6rpx solid transparent;
+  padding: 24rpx 12rpx;
+  border-left: 4rpx solid transparent;
   transition: all 0.2s;
-}
 
-.category-item.active {
-  background: #fff5f5;
-  border-left-color: #ff6b6b;
+  &.active {
+    background: #fff;
+    border-left-color: #ff4444;
+
+    .category-name {
+      color: #ff4444;
+      font-weight: 600;
+    }
+  }
 }
 
 .category-icon {
-  font-size: 40rpx;
-  margin-bottom: 8rpx;
+  font-size: 32rpx;
+  margin-bottom: 6rpx;
 }
 
 .category-name {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #333;
+  text-align: center;
+  line-height: 1.3;
 }
 
-.category-item.active .category-name {
-  color: #ff6b6b;
-  font-weight: 600;
-}
-
-/* 右侧商品区 */
+/* 右侧商品列表 */
 .product-content {
   flex: 1;
   padding: 16rpx;
 }
 
-.product-grid {
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 100rpx 0;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+.product-list {
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
-.load-more,
 .no-more {
-  padding: 40rpx 0;
+  padding: 30rpx 0;
   text-align: center;
 }
 
-.loading-text,
 .no-more-text {
   font-size: 24rpx;
+  color: #999;
+}
+
+.empty-state {
+  padding: 100rpx 0;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 28rpx;
   color: #999;
 }
 </style>
