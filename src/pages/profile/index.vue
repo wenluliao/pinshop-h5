@@ -96,6 +96,9 @@
         <text class="menu-arrow uni-icon">&#xe6a1;</text>
       </view>
     </view>
+
+    <!-- 底部导航栏 -->
+    <TabBar />
   </view>
 </template>
 
@@ -104,6 +107,7 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore, useCartStore } from '@/stores'
 import { getOrderCount } from '@/api/order'
+import TabBar from '@/components/TabBar.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -245,6 +249,7 @@ onShow(() => {
 .profile-page {
   min-height: 100vh;
   background: #f5f5f5;
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
 
 .user-card {

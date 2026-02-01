@@ -1,23 +1,27 @@
 import { defineStore } from 'pinia'
 import type { Product } from '@/types'
 import * as CartApi from '@/api/cart'
+import { getProductDetail } from '@/api/product'
 
 interface CartItem {
-  id: number
   skuId: number
-  title: string
-  imgUrl: string
-  salePrice: number
-  originalPrice?: number
-  weightSpec?: string
-  price: number
   count: number
   selected: boolean
-  stock: number
+}
+
+interface CartItemWithInfo extends CartItem {
+  title?: string
+  imgUrl?: string
+  salePrice?: number
+  originalPrice?: number
+  weightSpec?: string
+  specification?: string
+  stock?: number
 }
 
 interface CartState {
   items: CartItem[]
+  itemsWithInfo: CartItemWithInfo[]
   loaded: boolean
 }
 
@@ -46,21 +50,22 @@ const saveCartToStorage = (items: CartItem[]) => {
 export const useCartStore = defineStore('cart', {
   state: (): CartState => ({
     items: loadCartFromStorage(),
-    loaded: false
+    loaded: false,
+    itemsWithInfo: [] as CartItemWithInfo[]
   }),
 
   getters: {
     // 选中的商品
-    selectedItems: (state) => state.items.filter(item => item.selected),
+    selectedItems: (state) => state.itemsWithInfo.filter(item => item.selected),
 
     // 选中数量
-    selectedCount: (state) => state.items.filter(item => item.selected).length,
+    selectedCount: (state) => state.itemsWithInfo.filter(item => item.selected).length,
 
     // 选中总价
     selectedTotal: (state) =>
-      state.items
+      state.itemsWithInfo
         .filter(item => item.selected)
-        .reduce((total, item) => total + (item.salePrice || item.price) * item.count, 0),
+        .reduce((total, item) => total + (item.salePrice || 0) * item.count, 0),
 
     // 总数量
     totalCount: (state) => state.items.reduce((sum, item) => sum + item.count, 0),
@@ -78,18 +83,54 @@ export const useCartStore = defineStore('cart', {
 
   actions: {
     /**
-     * 从后端加载购物车
+     * 从后端加载商品详情
      */
     async loadCart() {
+      if (this.loaded) return
+
       try {
-        const data = await CartApi.getCartList()
-        this.items = data || []
+        // 并发查询所有商品详情
+        const itemsWithInfo = await Promise.all(
+          this.items.map(async (item) => {
+            try {
+              const detail = await getProductDetail(item.skuId)
+              return {
+                ...item,
+                title: detail.title,
+                imgUrl: detail.imgUrl,
+                salePrice: detail.salePrice,
+                originalPrice: detail.originalPrice,
+                specification: detail.specification,
+                stock: detail.stock
+              }
+            } catch (error) {
+              console.error(`加载商品 ${item.skuId} 详情失败:`, error)
+              return {
+                ...item,
+                title: '商品已下架',
+                imgUrl: '',
+                salePrice: 0,
+                stock: 0
+              }
+            }
+          })
+        )
+
+        this.itemsWithInfo = itemsWithInfo
         this.loaded = true
       } catch (error) {
         console.error('加载购物车失败:', error)
-        this.items = []
+        this.itemsWithInfo = []
         this.loaded = true
       }
+    },
+
+    /**
+     * 刷新购物车商品信息（重新查询价格和库存）
+     */
+    async refreshCart() {
+      this.loaded = false
+      await this.loadCart()
     },
 
     /**
@@ -105,7 +146,7 @@ export const useCartStore = defineStore('cart', {
           console.log('后端API调用失败，使用本地存储')
         }
 
-        // 更新本地状态
+        // 更新本地状态（只保存skuId、count、selected）
         const existingItem = this.items.find(item => item.skuId === product.skuId)
         if (existingItem) {
           existingItem.count += count
@@ -113,21 +154,17 @@ export const useCartStore = defineStore('cart', {
           saveCartToStorage(this.items)
         } else {
           this.items.push({
-            id: Date.now(),
             skuId: product.skuId,
-            title: product.title,
-            imgUrl: product.imgUrl,
-            salePrice: product.salePrice,
-            originalPrice: product.originalPrice,
-            weightSpec: product.weightSpec,
-            price: product.salePrice,
             count,
-            selected: true, // 默认选中
-            stock: product.stock || 999
+            selected: true
           })
           // 保存到localStorage
           saveCartToStorage(this.items)
         }
+
+        // 刷新商品信息
+        this.loaded = false
+        await this.loadCart()
       } catch (error) {
         console.error('添加到购物车失败:', error)
         throw error
@@ -147,6 +184,7 @@ export const useCartStore = defineStore('cart', {
         }
         // 更新本地状态
         this.items = this.items.filter(item => item.skuId !== skuId)
+        this.itemsWithInfo = this.itemsWithInfo.filter(item => item.skuId !== skuId)
         // 保存到localStorage
         saveCartToStorage(this.items)
       } catch (error) {
@@ -173,9 +211,13 @@ export const useCartStore = defineStore('cart', {
           const item = this.items.find(item => item.skuId === skuId)
           if (item) {
             item.count = count
-            // 保存到localStorage
-            saveCartToStorage(this.items)
           }
+          const itemWithInfo = this.itemsWithInfo.find(item => item.skuId === skuId)
+          if (itemWithInfo) {
+            itemWithInfo.count = count
+          }
+          // 保存到localStorage
+          saveCartToStorage(this.items)
         }
       } catch (error) {
         console.error('更新数量失败:', error)
@@ -198,9 +240,13 @@ export const useCartStore = defineStore('cart', {
         const item = this.items.find(item => item.skuId === skuId)
         if (item) {
           item.selected = !item.selected
-          // 保存到localStorage
-          saveCartToStorage(this.items)
         }
+        const itemWithInfo = this.itemsWithInfo.find(item => item.skuId === skuId)
+        if (itemWithInfo) {
+          itemWithInfo.selected = !itemWithInfo.selected
+        }
+        // 保存到localStorage
+        saveCartToStorage(this.items)
       } catch (error) {
         console.error('切换选中状态失败:', error)
         throw error
@@ -221,6 +267,9 @@ export const useCartStore = defineStore('cart', {
         }
 
         this.items.forEach(item => {
+          item.selected = selected
+        })
+        this.itemsWithInfo.forEach(item => {
           item.selected = selected
         })
         // 保存到localStorage

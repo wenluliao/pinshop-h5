@@ -1,7 +1,7 @@
 <template>
   <view class="cart-page">
     <!-- 购物车列表 -->
-    <scroll-view class="cart-list" scroll-y>
+    <scroll-view class="cart-list" scroll-y refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
       <view v-if="cartStore.items.length === 0" class="empty-state">
         <view class="empty-icon">
           <text class="uni-icon">&#xe607;</text>
@@ -14,7 +14,7 @@
       <view v-else class="cart-items">
         <transition-group name="cart-item">
           <view
-            v-for="item in cartStore.items"
+            v-for="item in cartStore.itemsWithInfo"
             :key="item.skuId"
             class="cart-item"
             :class="{ 'item-selected': item.selected }"
@@ -30,11 +30,11 @@
 
             <view class="item-info">
               <text class="item-title text-ellipsis-2">{{ item.title }}</text>
-              <text v-if="item.weightSpec" class="item-spec">{{ item.weightSpec }}</text>
+              <text v-if="formatSpec(item)" class="item-spec">{{ formatSpec(item) }}</text>
               <view class="item-footer">
                 <view class="price-wrapper">
                   <text class="item-price price-color">¥{{ item.salePrice.toFixed(2) }}</text>
-                  <text v-if="item.originalPrice" class="item-original">¥{{ item.originalPrice.toFixed(2) }}</text>
+                  <text v-if="item.originalPrice && item.originalPrice > item.salePrice" class="item-original">¥{{ item.originalPrice.toFixed(2) }}</text>
                 </view>
                 <view class="item-stepper">
                   <view
@@ -61,7 +61,7 @@
     </scroll-view>
 
     <!-- 底部结算栏 -->
-    <view v-if="cartStore.items.length > 0" class="bottom-bar">
+    <view v-if="cartStore.itemsWithInfo.length > 0" class="bottom-bar">
       <view class="select-all" :class="{ 'checked': cartStore.isAllSelected }" @tap="cartStore.toggleSelectAll">
         <text class="checkbox-icon">{{ cartStore.isAllSelected ? '✓' : '' }}</text>
         <text class="select-all-label">全选</text>
@@ -81,14 +81,75 @@
         结算({{ cartStore.selectedCount }})
       </button>
     </view>
+
+    <!-- 底部导航栏 -->
+    <TabBar />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useCartStore } from '@/stores'
+import TabBar from '@/components/TabBar.vue'
 
 const cartStore = useCartStore()
+
+// 下拉刷新状态
+const refreshing = ref(false)
+
+// 页面显示时加载购物车商品详情
+onShow(() => {
+  cartStore.loadCart()
+})
+
+// 下拉刷新
+const onRefresh = async () => {
+  refreshing.value = true
+  try {
+    await cartStore.refreshCart()
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success'
+    })
+  } catch (error) {
+    console.error('刷新购物车失败:', error)
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    })
+  } finally {
+    refreshing.value = false
+  }
+}
+
+// 解析规格JSON字符串，返回可读文本
+const formatSpec = (item: any): string => {
+  // 优先使用 weightSpec
+  if (item.weightSpec) {
+    return item.weightSpec
+  }
+
+  // 其次使用 specification
+  if (item.specification) {
+    try {
+      const specObj = JSON.parse(item.specification)
+      if (typeof specObj === 'object') {
+        const values = Object.values(specObj)
+        if (values.length > 0) {
+          return values.join(' / ')
+        }
+      }
+      if (typeof specObj === 'string') {
+        return specObj
+      }
+    } catch (e) {
+      return item.specification
+    }
+  }
+
+  return ''
+}
 
 // 左滑删除相关状态
 const touchStartX = ref(0)
@@ -176,7 +237,7 @@ const checkout = () => {
   background: #fafafa;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
 }
 
 .cart-list {

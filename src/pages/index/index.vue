@@ -72,6 +72,9 @@
         </view>
       </scroll-view>
     </view>
+
+    <!-- 底部导航栏 -->
+    <TabBar />
   </view>
 </template>
 
@@ -83,6 +86,7 @@ import { getProductsByCategory } from '@/api/product'
 import { getCategoryTree } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import ProductCard from '@/components/ProductCard.vue'
+import TabBar from '@/components/TabBar.vue'
 
 // 状态栏高度
 const statusBarHeight = ref(0)
@@ -272,6 +276,7 @@ const loadData = async () => {
   display: flex;
   flex-direction: column;
   background: #f5f5f5;
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
 
 .status-bar {

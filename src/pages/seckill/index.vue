@@ -46,6 +46,9 @@
         <text class="no-more-text">没有更多了</text>
       </view>
     </scroll-view>
+
+    <!-- 底部导航栏 -->
+    <TabBar />
   </view>
 </template>
 
@@ -56,6 +59,7 @@ import type { Product } from '@/types'
 import { getFlashList } from '@/api/product'
 import ProductCard from '@/components/ProductCard.vue'
 import Countdown from '@/components/Countdown.vue'
+import TabBar from '@/components/TabBar.vue'
 
 // 状态栏高度
 const statusBarHeight = ref(0)
@@ -156,6 +160,7 @@ onReachBottom(() => {
   display: flex;
   flex-direction: column;
   background: #f5f5f5;
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
 
 /* 状态栏占位 */
