@@ -57,7 +57,7 @@
             :key="product.skuId"
             :product="product"
             :tags="getProductTags(product.skuId)"
-            @tap="goDetail"
+            @tap="goDetail(product)"
           />
         </view>
 
@@ -204,6 +204,14 @@ const goSearch = () => {
 
 // 跳转商品详情
 const goDetail = (product: CategoryProduct) => {
+  if (!product.skuId) {
+    uni.showToast({
+      title: '商品数据错误',
+      icon: 'none'
+    })
+    return
+  }
+
   uni.navigateTo({
     url: `/pages/detail/index?skuId=${product.skuId}`
   })
