@@ -1,6 +1,6 @@
 <template>
   <uni-popup ref="popup" type="bottom" :safe-area="false">
-    <view class="sku-selector">
+    <view class="sku-selector" v-if="visible">
       <view class="sku-header">
         <image class="sku-image" :src="product.imgUrl" mode="aspectFill" />
         <view class="sku-info">
@@ -62,6 +62,7 @@ const emit = defineEmits<{
 
 const popup = ref()
 const quantity = ref(1)
+const visible = ref(false) // 控制弹窗显示
 
 const selectedPrice = computed(() => {
   return props.product.flashPrice || props.product.salePrice
@@ -69,10 +70,12 @@ const selectedPrice = computed(() => {
 
 const open = () => {
   quantity.value = 1
+  visible.value = true
   popup.value?.open()
 }
 
 const close = () => {
+  visible.value = false
   popup.value?.close()
 }
 
