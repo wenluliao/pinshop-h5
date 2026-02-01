@@ -32,7 +32,7 @@
         <view class="spec-header">
           <text class="spec-label">规格</text>
           <view class="spec-value">
-            <text>{{ selectedSpec || '请选择规格' }}</text>
+            <text>{{ formatSpec(product.specification) }}</text>
             <text class="arrow">›</text>
           </view>
         </view>
@@ -103,9 +103,36 @@ const product = ref<ProductDetail>({
 })
 
 const skuSelector = ref()
-const selectedSpec = ref('')
 
 const cartCount = computed(() => cartStore.totalCount)
+
+// 解析规格JSON字符串，返回可读文本
+const formatSpec = (specStr: string | undefined): string => {
+  if (!specStr) return '请选择规格'
+
+  try {
+    // 尝试解析JSON
+    const specObj = JSON.parse(specStr)
+
+    // 提取所有值并拼接
+    if (typeof specObj === 'object') {
+      const values = Object.values(specObj)
+      if (values.length > 0) {
+        return values.join(' / ')
+      }
+    }
+
+    // 如果是字符串，直接返回
+    if (typeof specObj === 'string') {
+      return specObj
+    }
+
+    return '请选择规格'
+  } catch (e) {
+    // JSON解析失败，可能是纯文本
+    return specStr || '请选择规格'
+  }
+}
 
 // 显示价格
 const displayPrice = computed(() => {
@@ -117,11 +144,6 @@ const loadDetail = async (skuId: number) => {
   try {
     uni.showLoading({ title: '加载中...' })
     product.value = await getProductDetail(skuId)
-
-    // 设置默认规格
-    if (product.value.specification) {
-      selectedSpec.value = product.value.specification
-    }
   } catch (error) {
     console.error('加载详情失败:', error)
     uni.showToast({
@@ -148,8 +170,7 @@ const openSkuSelector = () => {
 
 // 确认选择
 const onConfirm = (data: { spec: string; quantity: number }) => {
-  selectedSpec.value = data.spec
-  // 加入购物车或购买
+  // 加入购物车
   cartStore.addToCart(product.value, data.quantity)
   uni.showToast({
     title: '已加入购物车',
