@@ -7,10 +7,20 @@ import type {
 } from '@/types'
 
 /**
- * 用户登录
+ * 用户登录（微信）
  */
 export function login(data: LoginReq): Promise<LoginRes> {
   return http.post('/v1/user/login', data)
+}
+
+/**
+ * 账号密码登录
+ */
+export function loginByPassword(data: {
+  username: string
+  password: string
+}): Promise<LoginRes> {
+  return http.post('/v1/user/login-password', data)
 }
 
 /**

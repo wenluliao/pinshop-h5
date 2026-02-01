@@ -41,6 +41,25 @@ export const useUserStore = defineStore('user', {
     },
 
     /**
+     * 账号密码登录
+     */
+    async loginByPassword(username: string, password: string) {
+      try {
+        const res = await userApi.loginByPassword({ username, password })
+        this.token = res.token
+        this.userInfo = res.userInfo
+
+        // 持久化存储
+        uni.setStorageSync('token', res.token)
+        uni.setStorageSync('userInfo', res.userInfo)
+
+        return res
+      } catch (error) {
+        throw error
+      }
+    },
+
+    /**
      * 退出登录
      */
     logout() {

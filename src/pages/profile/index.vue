@@ -118,35 +118,10 @@ const orderCount = ref({
 const cartCount = computed(() => cartStore.totalCount)
 
 // 登录
-const handleLogin = async () => {
-  try {
-    // 获取用户信息
-    const res = await uni.getUserProfile({
-      desc: '用于完善用户资料'
-    })
-
-    // 获取登录凭证
-    const loginRes = await uni.login({
-      provider: 'weixin'
-    })
-
-    // 调用登录接口
-    await userStore.login(
-      loginRes.code || '',
-      res.userInfo.nickName,
-      res.userInfo.avatarUrl
-    )
-
-    uni.showToast({
-      title: '登录成功',
-      icon: 'success'
-    })
-
-    // 加载订单统计
-    loadOrderCount()
-  } catch (error) {
-    console.error('登录失败:', error)
-  }
+const handleLogin = () => {
+  uni.navigateTo({
+    url: '/pages/login/index'
+  })
 }
 
 // 退出登录
@@ -259,8 +234,10 @@ onMounted(() => {
 })
 
 onShow(() => {
-  // 页面显示时刷新购物车数量
-  cartStore.saveCart()
+  // 页面显示时刷新订单统计
+  if (userStore.isLogin) {
+    loadOrderCount()
+  }
 })
 </script>
 
