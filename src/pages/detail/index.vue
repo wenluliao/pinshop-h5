@@ -1,148 +1,77 @@
 <template>
   <view class="detail-page">
-    <!-- 商品图片轮播 -->
-    <swiper class="product-swiper" circular :indicator-dots="true" indicator-color="rgba(255,255,255,0.5)" indicator-active-color="#ff6b6b">
+    <!-- 商品图片轮播 - 横图 -->
+    <swiper class="product-swiper" circular :indicator-dots="true" indicator-color="rgba(0,0,0,0.2)" indicator-active-color="#ff6b6b">
       <swiper-item v-for="(img, index) in product.images" :key="index">
         <image class="product-image" :src="img" mode="aspectFill" @tap="previewImage(index)" />
       </swiper-item>
     </swiper>
 
-    <!-- 价格卡片 -->
-    <view class="price-card">
-      <view class="price-main">
-        <view class="flash-price-section">
-          <text class="price-symbol">¥</text>
-          <text class="price-integer">{{ integerPart(displayPrice) }}</text>
-          <text class="price-decimal">.{{ decimalPart(displayPrice) }}</text>
-        </view>
-        <view v-if="product.flashPrice" class="original-price-section">
-          <text class="original-price">原价¥{{ product.salePrice?.toFixed(2) || '0.00' }}</text>
-        </view>
-      </view>
-      <view class="stock-info">
-        <text class="stock-text">库存：{{ product.stock }}件</text>
-        <text v-if="product.sales" class="sales-text">已售{{ product.sales }}件</text>
-      </view>
-      <!-- 秒杀倒计时 -->
-      <view v-if="product.flashPrice && product.flashEndTime" class="flash-countdown">
-        <text class="countdown-label">秒杀结束</text>
-        <Countdown :end-time="product.flashEndTime" />
-      </view>
-    </view>
-
-    <!-- 商品信息卡片 -->
-    <view class="info-card">
-      <view class="product-header">
-        <text class="product-title">{{ product.title }}</text>
-        <view v-if="product.subtitle" class="product-subtitle">
-          {{ product.subtitle }}
-        </view>
-      </view>
-
-      <!-- 标签 -->
-      <view v-if="product.tags && product.tags.length" class="product-tags">
-        <text v-for="(tag, index) in product.tags" :key="index" class="product-tag">
-          {{ tag }}
+    <!-- 价格信息 -->
+    <view class="price-section">
+      <view class="price-row">
+        <text class="price-symbol">¥</text>
+        <text class="price-integer">{{ integerPart(displayPrice) }}</text>
+        <text class="price-decimal">.{{ decimalPart(displayPrice) }}</text>
+        <text v-if="product.originalPrice && product.originalPrice > displayPrice" class="original-price">
+          ¥{{ product.originalPrice.toFixed(2) }}
         </text>
       </view>
-
-      <!-- 规格选择 -->
-      <view class="spec-row" @tap="openSkuSelector('normal')">
-        <text class="spec-label">规格</text>
-        <view class="spec-value">
-          <text>{{ product.specification || '请选择规格' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
-
-      <!-- 配送信息 -->
-      <view class="delivery-row">
-        <text class="delivery-label">配送</text>
-        <view class="delivery-value">
-          <text class="delivery-location">北京 至 北京朝阳区</text>
-          <text class="delivery-time">预计明天送达</text>
-        </view>
-      </view>
-
-      <!-- 服务保障 -->
-      <view class="service-row">
-        <text class="service-label">服务</text>
-        <view class="service-value">
-          <text class="service-item">✓ 正品保证</text>
-          <text class="service-item">✓ 极速退款</text>
-          <text class="service-item">✓ 运费险</text>
-        </view>
+      <view class="stock-row">
+        <text class="stock-text">库存 {{ product.stock }} 件</text>
       </view>
     </view>
 
-    <!-- 拼团信息 -->
-    <view v-if="groupSessions.length > 0" class="group-card">
-      <view class="group-header">
-        <view class="group-title-row">
-          <text class="group-icon">👥</text>
-          <text class="group-title">正在拼团</text>
-          <text class="group-count">{{ groupSessions.length }}人在拼团</text>
-        </view>
-        <text class="group-more" @tap="showMoreGroups">查看更多 ›</text>
-      </view>
-      <view class="group-list">
-        <view
-          v-for="session in groupSessions.slice(0, 2)"
-          :key="session.sessionId"
-          class="group-item"
-          @tap="joinGroup(session)"
-        >
-          <image class="group-avatar" :src="session.initiatorAvatar" />
-          <view class="group-info">
-            <text class="group-name">{{ session.initiatorName }}</text>
-            <view class="group-status">
-              <text class="group-missing">还差{{ session.missingNum }}人成团</text>
-              <Countdown :end-time="session.expireTime" :inline="true" />
-            </view>
+    <!-- 商品基本信息 -->
+    <view class="product-section">
+      <text class="product-title">{{ product.title }}</text>
+      <text v-if="product.subtitle" class="product-subtitle">{{ product.subtitle }}</text>
+
+      <!-- 规格选择 -->
+      <view class="spec-section" @tap="openSkuSelector">
+        <view class="spec-header">
+          <text class="spec-label">规格</text>
+          <view class="spec-value">
+            <text>{{ selectedSpec || '请选择规格' }}</text>
+            <text class="arrow">›</text>
           </view>
-          <button class="group-btn">去拼团</button>
         </view>
       </view>
     </view>
 
     <!-- 商品详情 -->
-    <view class="detail-card">
-      <view class="detail-header">商品详情</view>
-      <view class="detail-content">
-        <rich-text :nodes="product.content"></rich-text>
+    <view class="detail-section">
+      <view class="detail-title">— 商品详情 —</view>
+      <view class="detail-images">
+        <image
+          v-for="(img, index) in product.images"
+          :key="index"
+          class="detail-img"
+          :src="img"
+          mode="widthFix"
+        />
       </view>
     </view>
 
-    <!-- 底部安全区域 -->
-    <view class="safe-area"></view>
+    <!-- 底部占位 -->
+    <view class="bottom-placeholder"></view>
 
     <!-- 底部操作栏 -->
     <view class="bottom-bar">
-      <view class="bar-icons">
+      <view class="bar-left">
         <view class="bar-icon" @tap="goHome">
-          <text class="iconfont">🏠</text>
-          <text>首页</text>
+          <text class="icon">🏠</text>
+          <text class="icon-text">首页</text>
         </view>
-        <view class="bar-icon" @tap="addToCart">
-          <text class="iconfont">🛒</text>
-          <text>购物车</text>
+        <view class="bar-icon" @tap="goCart">
+          <text class="icon">🛒</text>
+          <text class="icon-text">购物车</text>
           <text v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</text>
         </view>
-        <view class="bar-icon" @tap="contactService">
-          <text class="iconfont">💬</text>
-          <text>客服</text>
-        </view>
       </view>
-      <view class="bar-buttons">
-        <button class="btn-cart" @tap="openSkuSelector('normal')">
-          加入购物车
-        </button>
-        <button class="btn-buy" @tap="openSkuSelector('normal')">
-          立即购买
-        </button>
-        <button v-if="product.flashPrice" class="btn-flash" @tap="openSkuSelector('flash')">
-          秒杀抢购
-        </button>
+      <view class="bar-right">
+        <button class="btn-cart" @tap="addToCart">加入购物车</button>
+        <button class="btn-buy" @tap="buyNow">立即购买</button>
       </view>
     </view>
 
@@ -154,13 +83,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import type { ProductDetail, GroupSession } from '@/types'
+import type { ProductDetail } from '@/types'
 import { getProductDetail } from '@/api/product'
-import { getGroupSessions } from '@/api/group'
-import { handleSeckill } from '@/utils/seckill-helper'
 import { useUserStore, useCartStore } from '@/stores'
 import SkuSelector from '@/components/SkuSelector.vue'
-import Countdown from '@/components/Countdown.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -176,15 +102,14 @@ const product = ref<ProductDetail>({
   content: ''
 })
 
-const groupSessions = ref<GroupSession[]>([])
 const skuSelector = ref()
-const buyType = ref<'normal' | 'flash'>('normal')
+const selectedSpec = ref('')
 
 const cartCount = computed(() => cartStore.totalCount)
 
-// 显示价格（优先显示秒杀价）
+// 显示价格
 const displayPrice = computed(() => {
-  return product.value.flashPrice || product.value.salePrice || 0
+  return product.value.salePrice || 0
 })
 
 // 加载商品详情
@@ -193,13 +118,9 @@ const loadDetail = async (skuId: number) => {
     uni.showLoading({ title: '加载中...' })
     product.value = await getProductDetail(skuId)
 
-    // 加载拼团会话
-    if (product.value.skuId) {
-      try {
-        groupSessions.value = await getGroupSessions(product.value.skuId)
-      } catch (e) {
-        console.log('拼团信息加载失败:', e)
-      }
+    // 设置默认规格
+    if (product.value.specification) {
+      selectedSpec.value = product.value.specification
     }
   } catch (error) {
     console.error('加载详情失败:', error)
@@ -221,7 +142,23 @@ const previewImage = (index: number) => {
 }
 
 // 打开SKU选择器
-const openSkuSelector = (type: 'normal' | 'flash') => {
+const openSkuSelector = () => {
+  skuSelector.value?.open()
+}
+
+// 确认选择
+const onConfirm = (data: { spec: string; quantity: number }) => {
+  selectedSpec.value = data.spec
+  // 加入购物车或购买
+  cartStore.addToCart(product.value, data.quantity)
+  uni.showToast({
+    title: '已加入购物车',
+    icon: 'success'
+  })
+}
+
+// 加入购物车
+const addToCart = () => {
   if (!userStore.isLogin) {
     uni.showToast({
       title: '请先登录',
@@ -235,58 +172,6 @@ const openSkuSelector = (type: 'normal' | 'flash') => {
     return
   }
 
-  buyType.value = type
-  skuSelector.value?.open()
-}
-
-// 确认购买
-const onConfirm = async (quantity: number) => {
-  if (buyType.value === 'flash') {
-    // 秒杀购买
-    try {
-      const orderId = await handleSeckill({
-        eventId: 0,
-        skuId: product.value.skuId,
-        count: quantity,
-        userId: Number(userStore.userInfo!.userId)
-      })
-
-      uni.showToast({
-        title: '抢购成功！',
-        icon: 'success'
-      })
-
-      setTimeout(() => {
-        uni.navigateTo({
-          url: `/pages/order/detail?orderId=${orderId}`
-        })
-      }, 1500)
-    } catch (error: any) {
-      uni.showToast({
-        title: error.message || '抢购失败',
-        icon: 'none'
-      })
-    }
-  } else {
-    // 普通购买 - 加入购物车或直接购买
-    cartStore.addToCart(product.value, quantity)
-    uni.showToast({
-      title: '已加入购物车',
-      icon: 'success'
-    })
-  }
-}
-
-// 加入购物车
-const addToCart = () => {
-  if (!userStore.isLogin) {
-    uni.showToast({
-      title: '请先登录',
-      icon: 'none'
-    })
-    return
-  }
-
   cartStore.addToCart(product.value, 1)
   uni.showToast({
     title: '已加入购物车',
@@ -294,33 +179,25 @@ const addToCart = () => {
   })
 }
 
-// 联系客服
-const contactService = () => {
-  uni.showToast({
-    title: '客服功能开发中',
-    icon: 'none'
-  })
-}
-
-// 参与拼团
-const joinGroup = (session: GroupSession) => {
+// 立即购买
+const buyNow = () => {
   if (!userStore.isLogin) {
     uni.showToast({
       title: '请先登录',
       icon: 'none'
     })
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/index'
+      })
+    }, 1500)
     return
   }
 
-  uni.navigateTo({
-    url: `/pages/group/detail?sessionId=${session.sessionId}`
-  })
-}
-
-// 显示更多拼团
-const showMoreGroups = () => {
-  uni.navigateTo({
-    url: `/pages/group/index?skuId=${product.value.skuId}`
+  // 直接加入购物车并跳转
+  cartStore.addToCart(product.value, 1)
+  uni.switchTab({
+    url: '/pages/cart/index'
   })
 }
 
@@ -328,6 +205,13 @@ const showMoreGroups = () => {
 const goHome = () => {
   uni.switchTab({
     url: '/pages/index/index'
+  })
+}
+
+// 去购物车
+const goCart = () => {
+  uni.switchTab({
+    url: '/pages/cart/index'
   })
 }
 
@@ -347,17 +231,13 @@ onLoad((options: any) => {
 .detail-page {
   min-height: 100vh;
   background: #f5f5f5;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 
-.safe-area {
-  height: 20rpx;
-}
-
-/* 商品图片 */
+/* 轮播图 - 横图 */
 .product-swiper {
   width: 100%;
-  height: 750rpx;
+  height: 600rpx;
   background: #fff;
 }
 
@@ -366,82 +246,60 @@ onLoad((options: any) => {
   height: 100%;
 }
 
-/* 价格卡片 */
-.price-card {
-  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+/* 价格区域 */
+.price-section {
+  background: #fff;
   padding: 32rpx;
-  color: #fff;
+  margin-bottom: 16rpx;
 }
 
-.price-main {
+.price-row {
   display: flex;
   align-items: baseline;
   margin-bottom: 16rpx;
 }
 
-.flash-price-section {
-  display: flex;
-  align-items: baseline;
-}
-
 .price-symbol {
   font-size: 32rpx;
+  color: #ff6b6b;
   font-weight: bold;
 }
 
 .price-integer {
-  font-size: 64rpx;
+  font-size: 56rpx;
+  color: #ff6b6b;
   font-weight: bold;
   margin-left: 4rpx;
 }
 
 .price-decimal {
-  font-size: 36rpx;
+  font-size: 32rpx;
+  color: #ff6b6b;
   font-weight: bold;
-}
-
-.original-price-section {
-  margin-left: 24rpx;
 }
 
 .original-price {
   font-size: 24rpx;
-  opacity: 0.9;
+  color: #999;
   text-decoration: line-through;
+  margin-left: 16rpx;
 }
 
-.stock-info {
-  display: flex;
-  gap: 32rpx;
-  margin-bottom: 16rpx;
-  font-size: 24rpx;
-  opacity: 0.95;
-}
-
-.flash-countdown {
+.stock-row {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.3);
 }
 
-.countdown-label {
+.stock-text {
   font-size: 24rpx;
-  opacity: 0.95;
+  color: #999;
 }
 
-/* 信息卡片 */
-.info-card {
+/* 商品信息区域 */
+.product-section {
   background: #fff;
-  margin: 16rpx;
-  border-radius: 16rpx;
   padding: 32rpx;
-}
-
-.product-header {
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 }
 
 .product-title {
@@ -450,70 +308,45 @@ onLoad((options: any) => {
   color: #333;
   line-height: 1.5;
   display: block;
+  margin-bottom: 16rpx;
 }
 
 .product-subtitle {
-  margin-top: 12rpx;
   font-size: 26rpx;
   color: #666;
   line-height: 1.4;
-}
-
-.product-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
+  display: block;
   margin-bottom: 24rpx;
-  padding-bottom: 24rpx;
-  border-bottom: 1rpx solid #f5f5f5;
 }
 
-.product-tag {
-  padding: 8rpx 20rpx;
-  background: linear-gradient(135deg, #fff4f4, #ffe8e8);
-  color: #ff6b6b;
-  font-size: 22rpx;
-  border-radius: 20rpx;
-  border: 1rpx solid #ffcece;
+.spec-section {
+  border-top: 1rpx solid #f5f5f5;
+  padding-top: 24rpx;
 }
 
-.spec-row,
-.delivery-row,
-.service-row {
+.spec-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #f5f5f5;
-
-  &:last-child {
-    border-bottom: none;
-  }
 }
 
-.spec-label,
-.delivery-label,
-.service-label {
+.spec-label {
   font-size: 28rpx;
   color: #666;
-  width: 100rpx;
+  width: 80rpx;
 }
 
-.spec-value,
-.delivery-value,
-.service-value {
+.spec-value {
   flex: 1;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: #333;
-}
 
-.spec-value text,
-.delivery-location,
-.delivery-time {
-  margin-right: 8rpx;
+  text {
+    margin-right: 8rpx;
+  }
 }
 
 .arrow {
@@ -521,142 +354,34 @@ onLoad((options: any) => {
   font-size: 32rpx;
 }
 
-.delivery-value {
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.delivery-time {
-  font-size: 22rpx;
-  color: #ff6b6b;
-  margin-top: 4rpx;
-}
-
-.service-value {
-  gap: 24rpx;
-}
-
-.service-item {
-  color: #52c41a;
-  font-size: 24rpx;
-}
-
-/* 拼团卡片 */
-.group-card {
+/* 商品详情 */
+.detail-section {
   background: #fff;
-  margin: 16rpx;
-  border-radius: 16rpx;
   padding: 32rpx;
+  margin-bottom: 16rpx;
 }
 
-.group-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-.group-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.group-icon {
-  font-size: 32rpx;
-}
-
-.group-title {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.group-count {
-  font-size: 22rpx;
+.detail-title {
+  font-size: 28rpx;
   color: #999;
-  margin-left: 8rpx;
+  text-align: center;
+  margin-bottom: 32rpx;
 }
 
-.group-more {
-  font-size: 24rpx;
-  color: #ff6b6b;
-}
-
-.group-list {
+.detail-images {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
 }
 
-.group-item {
-  display: flex;
-  align-items: center;
-  padding: 20rpx;
-  background: #fff9f9;
-  border-radius: 12rpx;
-  border: 1rpx solid #ffe8e8;
-}
-
-.group-avatar {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  margin-right: 16rpx;
-  background: #f0f0f0;
-}
-
-.group-info {
-  flex: 1;
-}
-
-.group-name {
-  font-size: 26rpx;
-  color: #333;
+.detail-img {
+  width: 100%;
   display: block;
-  margin-bottom: 6rpx;
+  margin-bottom: 0;
 }
 
-.group-status {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.group-missing {
-  font-size: 22rpx;
-  color: #ff6b6b;
-}
-
-.group-btn {
-  padding: 12rpx 28rpx;
-  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-  color: #fff;
-  font-size: 24rpx;
-  border-radius: 32rpx;
-  border: none;
-}
-
-/* 详情卡片 */
-.detail-card {
-  background: #fff;
-  margin: 16rpx;
-  border-radius: 16rpx;
-  padding: 32rpx;
-}
-
-.detail-header {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 24rpx;
-  text-align: center;
-}
-
-.detail-content {
-  font-size: 26rpx;
-  color: #666;
-  line-height: 1.8;
+/* 底部占位 */
+.bottom-placeholder {
+  height: 20rpx;
 }
 
 /* 底部操作栏 */
@@ -667,6 +392,7 @@ onLoad((options: any) => {
   right: 0;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #fff;
@@ -674,10 +400,9 @@ onLoad((options: any) => {
   z-index: 100;
 }
 
-.bar-icons {
+.bar-left {
   display: flex;
-  gap: 24rpx;
-  margin-right: 24rpx;
+  gap: 32rpx;
 }
 
 .bar-icon {
@@ -686,20 +411,20 @@ onLoad((options: any) => {
   align-items: center;
   position: relative;
 
-  .iconfont {
-    font-size: 40rpx;
-    margin-bottom: 2rpx;
+  .icon {
+    font-size: 44rpx;
+    margin-bottom: 4rpx;
   }
 
-  text {
+  .icon-text {
     font-size: 20rpx;
     color: #666;
   }
 
   .cart-badge {
     position: absolute;
-    top: -8rpx;
-    right: -8rpx;
+    top: -6rpx;
+    right: -6rpx;
     min-width: 32rpx;
     height: 32rpx;
     line-height: 32rpx;
@@ -712,13 +437,14 @@ onLoad((options: any) => {
   }
 }
 
-.bar-buttons {
-  flex: 1;
+.bar-right {
   display: flex;
   gap: 16rpx;
+  flex: 1;
+  margin-left: 24rpx;
 }
 
-.bar-buttons button {
+.bar-right button {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
@@ -736,17 +462,10 @@ onLoad((options: any) => {
 .btn-cart {
   background: #ffd93d;
   color: #333;
-  flex: 0.8;
 }
 
 .btn-buy {
-  background: linear-gradient(135deg, #ffa940, #ffc53d);
-  color: #fff;
-}
-
-.btn-flash {
   background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
   color: #fff;
-  flex: 1.2;
 }
 </style>
