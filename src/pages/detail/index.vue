@@ -157,7 +157,18 @@ const loadDetail = async (skuId: number) => {
     // 只使用salePrice，清除flashPrice（如果有）
     product.value = {
       ...data,
-      flashPrice: undefined
+      flashPrice: undefined,
+      // 将随机图片URL替换为固定URL
+      imgUrl: data.imgUrl || '',
+      images: data.images ? data.images.map((img: string) => {
+        // 如果是picsum随机图片，替换为固定占位图
+        if (img.includes('picsum.photos')) {
+          // 使用固定种子确保图片一致
+          const id = data.skuId || 1
+          return `https://picsum.photos/id/${id}/800/600`
+        }
+        return img
+      }) : []
     }
 
     console.log('商品详情加载完成:', product.value)
