@@ -44,8 +44,8 @@
       <view class="detail-title">— 商品详情 —</view>
       <view class="detail-images">
         <image
-          v-for="(img, index) in product.images"
-          :key="index"
+          v-for="(img, index) in detailImages"
+          :key="'detail-' + index"
           class="detail-img"
           :src="img"
           mode="widthFix"
@@ -106,6 +106,20 @@ const skuSelector = ref()
 
 const cartCount = computed(() => cartStore.totalCount)
 
+// 显示价格（只用salePrice，不使用flashPrice）
+const displayPrice = computed(() => {
+  return product.value.salePrice || 0
+})
+
+// 详情图片列表（使用商品图片，避免重复）
+const detailImages = computed(() => {
+  if (!product.value.images || product.value.images.length === 0) {
+    return []
+  }
+  // 直接使用商品的所有图片作为详情图
+  return product.value.images
+})
+
 // 解析规格JSON字符串，返回可读文本
 const formatSpec = (specStr: string | undefined): string => {
   if (!specStr) return '请选择规格'
@@ -134,16 +148,19 @@ const formatSpec = (specStr: string | undefined): string => {
   }
 }
 
-// 显示价格
-const displayPrice = computed(() => {
-  return product.value.salePrice || 0
-})
-
 // 加载商品详情
 const loadDetail = async (skuId: number) => {
   try {
     uni.showLoading({ title: '加载中...' })
-    product.value = await getProductDetail(skuId)
+    const data = await getProductDetail(skuId)
+
+    // 只使用salePrice，清除flashPrice（如果有）
+    product.value = {
+      ...data,
+      flashPrice: undefined
+    }
+
+    console.log('商品详情加载完成:', product.value)
   } catch (error) {
     console.error('加载详情失败:', error)
     uni.showToast({
@@ -169,9 +186,9 @@ const openSkuSelector = () => {
 }
 
 // 确认选择
-const onConfirm = (data: { spec: string; quantity: number }) => {
+const onConfirm = (quantity: number) => {
   // 加入购物车
-  cartStore.addToCart(product.value, data.quantity)
+  cartStore.addToCart(product.value, quantity)
   uni.showToast({
     title: '已加入购物车',
     icon: 'success'
@@ -265,13 +282,14 @@ onLoad((options: any) => {
 .product-image {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 /* 价格区域 */
 .price-section {
   background: #fff;
   padding: 32rpx;
-  margin-bottom: 16rpx;
+  margin-bottom: 2rpx;
 }
 
 .price-row {
@@ -392,6 +410,7 @@ onLoad((options: any) => {
 .detail-images {
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .detail-img {
