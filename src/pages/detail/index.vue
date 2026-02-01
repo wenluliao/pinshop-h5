@@ -111,13 +111,13 @@ const displayPrice = computed(() => {
   return product.value.salePrice || 0
 })
 
-// 详情图片列表（使用商品图片，避免重复）
+// 详情图片列表（只使用主图，避免不相关的图片）
 const detailImages = computed(() => {
-  if (!product.value.images || product.value.images.length === 0) {
+  if (!product.value.imgUrl) {
     return []
   }
-  // 直接使用商品的所有图片作为详情图
-  return product.value.images
+  // 只返回主图，避免混入测试图片
+  return [product.value.imgUrl]
 })
 
 // 解析规格JSON字符串，返回可读文本
