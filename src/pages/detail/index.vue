@@ -1,55 +1,93 @@
 <template>
   <view class="detail-page">
-    <!-- 商品图片 -->
-    <swiper class="product-swiper" circular :indicator-dots="true">
+    <!-- 商品图片轮播 -->
+    <swiper class="product-swiper" circular :indicator-dots="true" indicator-color="rgba(255,255,255,0.5)" indicator-active-color="#ff6b6b">
       <swiper-item v-for="(img, index) in product.images" :key="index">
         <image class="product-image" :src="img" mode="aspectFill" @tap="previewImage(index)" />
       </swiper-item>
     </swiper>
 
-    <!-- 秒杀信息 -->
-    <view v-if="product.flashPrice && product.flashEndTime" class="flash-info">
-      <view class="flash-price">
-        <text class="price-symbol">¥</text>
-        <text class="price-integer">{{ integerPart(product.flashPrice) }}</text>
-        <text class="price-decimal">.{{ decimalPart(product.flashPrice) }}</text>
-        <text class="price-original">¥{{ product.salePrice?.toFixed(2) || '0.00' }}</text>
+    <!-- 价格卡片 -->
+    <view class="price-card">
+      <view class="price-main">
+        <view class="flash-price-section">
+          <text class="price-symbol">¥</text>
+          <text class="price-integer">{{ integerPart(displayPrice) }}</text>
+          <text class="price-decimal">.{{ decimalPart(displayPrice) }}</text>
+        </view>
+        <view v-if="product.flashPrice" class="original-price-section">
+          <text class="original-price">原价¥{{ product.salePrice?.toFixed(2) || '0.00' }}</text>
+        </view>
       </view>
-      <Countdown :end-time="product.flashEndTime" label="距结束" />
-      <ProgressBar :current="product.sales || 0" :total="product.stock + (product.sales || 0)" />
+      <view class="stock-info">
+        <text class="stock-text">库存：{{ product.stock }}件</text>
+        <text v-if="product.sales" class="sales-text">已售{{ product.sales }}件</text>
+      </view>
+      <!-- 秒杀倒计时 -->
+      <view v-if="product.flashPrice && product.flashEndTime" class="flash-countdown">
+        <text class="countdown-label">秒杀结束</text>
+        <Countdown :end-time="product.flashEndTime" />
+      </view>
     </view>
 
-    <!-- 商品信息 -->
-    <view class="product-info">
-      <text class="product-title">{{ product.title }}</text>
-      <view v-if="product.subtitle" class="product-subtitle">
-        {{ product.subtitle }}
+    <!-- 商品信息卡片 -->
+    <view class="info-card">
+      <view class="product-header">
+        <text class="product-title">{{ product.title }}</text>
+        <view v-if="product.subtitle" class="product-subtitle">
+          {{ product.subtitle }}
+        </view>
       </view>
 
+      <!-- 标签 -->
       <view v-if="product.tags && product.tags.length" class="product-tags">
         <text v-for="(tag, index) in product.tags" :key="index" class="product-tag">
           {{ tag }}
         </text>
       </view>
 
-      <view class="product-footer">
-        <text class="product-price price-color">
-          ¥{{ displayPrice.toFixed(2) }}
-        </text>
-        <text v-if="product.flashPrice" class="product-original-price">¥{{ product.salePrice?.toFixed(2) || '0.00' }}</text>
-        <text class="product-stock">库存{{ product.stock }}件</text>
+      <!-- 规格选择 -->
+      <view class="spec-row" @tap="openSkuSelector('normal')">
+        <text class="spec-label">规格</text>
+        <view class="spec-value">
+          <text>{{ product.specification || '请选择规格' }}</text>
+          <text class="arrow">›</text>
+        </view>
+      </view>
+
+      <!-- 配送信息 -->
+      <view class="delivery-row">
+        <text class="delivery-label">配送</text>
+        <view class="delivery-value">
+          <text class="delivery-location">北京 至 北京朝阳区</text>
+          <text class="delivery-time">预计明天送达</text>
+        </view>
+      </view>
+
+      <!-- 服务保障 -->
+      <view class="service-row">
+        <text class="service-label">服务</text>
+        <view class="service-value">
+          <text class="service-item">✓ 正品保证</text>
+          <text class="service-item">✓ 极速退款</text>
+          <text class="service-item">✓ 运费险</text>
+        </view>
       </view>
     </view>
 
     <!-- 拼团信息 -->
-    <view v-if="groupSessions.length > 0" class="group-sessions">
+    <view v-if="groupSessions.length > 0" class="group-card">
       <view class="group-header">
-        <text class="group-title">正在拼团</text>
-        <text class="group-more" @tap="showMoreGroups">查看更多 ></text>
+        <view class="group-title-row">
+          <text class="group-icon">👥</text>
+          <text class="group-title">正在拼团</text>
+          <text class="group-count">{{ groupSessions.length }}人在拼团</text>
+        </view>
+        <text class="group-more" @tap="showMoreGroups">查看更多 ›</text>
       </view>
       <view class="group-list">
         <view
-          v-for="session in groupSessions.slice(0, 3)"
+          v-for="session in groupSessions.slice(0, 2)"
           :key="session.sessionId"
           class="group-item"
           @tap="joinGroup(session)"
@@ -57,41 +95,55 @@
           <image class="group-avatar" :src="session.initiatorAvatar" />
           <view class="group-info">
             <text class="group-name">{{ session.initiatorName }}</text>
-            <text class="group-missing">还差{{ session.missingNum }}人成团</text>
+            <view class="group-status">
+              <text class="group-missing">还差{{ session.missingNum }}人成团</text>
+              <Countdown :end-time="session.expireTime" :inline="true" />
+            </view>
           </view>
-          <button class="group-btn" size="mini">去拼团</button>
-          <Countdown :end-time="session.expireTime" :inline="true" />
+          <button class="group-btn">去拼团</button>
         </view>
       </view>
     </view>
 
     <!-- 商品详情 -->
-    <view class="product-detail">
-      <view class="detail-title">商品详情</view>
+    <view class="detail-card">
+      <view class="detail-header">商品详情</view>
       <view class="detail-content">
         <rich-text :nodes="product.content"></rich-text>
       </view>
     </view>
 
+    <!-- 底部安全区域 -->
+    <view class="safe-area"></view>
+
     <!-- 底部操作栏 -->
     <view class="bottom-bar">
       <view class="bar-icons">
         <view class="bar-icon" @tap="goHome">
-          <text class="uni-icon">&#xe61d;</text>
+          <text class="iconfont">🏠</text>
           <text>首页</text>
         </view>
         <view class="bar-icon" @tap="addToCart">
-          <text class="uni-icon">&#xe607;</text>
+          <text class="iconfont">🛒</text>
           <text>购物车</text>
           <text v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</text>
         </view>
+        <view class="bar-icon" @tap="contactService">
+          <text class="iconfont">💬</text>
+          <text>客服</text>
+        </view>
       </view>
-      <button class="btn-buy" @tap="openSkuSelector('normal')">
-        {{ product.flashPrice ? '单独购买' : '立即购买' }}
-      </button>
-      <button v-if="product.flashPrice" class="btn-flash" @tap="openSkuSelector('flash')">
-        秒杀抢购
-      </button>
+      <view class="bar-buttons">
+        <button class="btn-cart" @tap="openSkuSelector('normal')">
+          加入购物车
+        </button>
+        <button class="btn-buy" @tap="openSkuSelector('normal')">
+          立即购买
+        </button>
+        <button v-if="product.flashPrice" class="btn-flash" @tap="openSkuSelector('flash')">
+          秒杀抢购
+        </button>
+      </view>
     </view>
 
     <!-- SKU选择器 -->
@@ -109,7 +161,6 @@ import { handleSeckill } from '@/utils/seckill-helper'
 import { useUserStore, useCartStore } from '@/stores'
 import SkuSelector from '@/components/SkuSelector.vue'
 import Countdown from '@/components/Countdown.vue'
-import ProgressBar from '@/components/ProgressBar.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -139,14 +190,25 @@ const displayPrice = computed(() => {
 // 加载商品详情
 const loadDetail = async (skuId: number) => {
   try {
+    uni.showLoading({ title: '加载中...' })
     product.value = await getProductDetail(skuId)
 
     // 加载拼团会话
     if (product.value.skuId) {
-      groupSessions.value = await getGroupSessions(product.value.skuId)
+      try {
+        groupSessions.value = await getGroupSessions(product.value.skuId)
+      } catch (e) {
+        console.log('拼团信息加载失败:', e)
+      }
     }
   } catch (error) {
     console.error('加载详情失败:', error)
+    uni.showToast({
+      title: '加载失败',
+      icon: 'none'
+    })
+  } finally {
+    uni.hideLoading()
   }
 }
 
@@ -165,6 +227,11 @@ const openSkuSelector = (type: 'normal' | 'flash') => {
       title: '请先登录',
       icon: 'none'
     })
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/index'
+      })
+    }, 1500)
     return
   }
 
@@ -178,7 +245,7 @@ const onConfirm = async (quantity: number) => {
     // 秒杀购买
     try {
       const orderId = await handleSeckill({
-        eventId: 0, // TODO: 从后端获取
+        eventId: 0,
         skuId: product.value.skuId,
         count: quantity,
         userId: Number(userStore.userInfo!.userId)
@@ -201,7 +268,7 @@ const onConfirm = async (quantity: number) => {
       })
     }
   } else {
-    // 普通购买 - 加入购物车
+    // 普通购买 - 加入购物车或直接购买
     cartStore.addToCart(product.value, quantity)
     uni.showToast({
       title: '已加入购物车',
@@ -212,6 +279,14 @@ const onConfirm = async (quantity: number) => {
 
 // 加入购物车
 const addToCart = () => {
+  if (!userStore.isLogin) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    })
+    return
+  }
+
   cartStore.addToCart(product.value, 1)
   uni.showToast({
     title: '已加入购物车',
@@ -219,8 +294,24 @@ const addToCart = () => {
   })
 }
 
+// 联系客服
+const contactService = () => {
+  uni.showToast({
+    title: '客服功能开发中',
+    icon: 'none'
+  })
+}
+
 // 参与拼团
 const joinGroup = (session: GroupSession) => {
+  if (!userStore.isLogin) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    })
+    return
+  }
+
   uni.navigateTo({
     url: `/pages/group/detail?sessionId=${session.sessionId}`
   })
@@ -254,12 +345,20 @@ onLoad((options: any) => {
 
 <style lang="scss" scoped>
 .detail-page {
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
+.safe-area {
+  height: 20rpx;
+}
+
+/* 商品图片 */
 .product-swiper {
   width: 100%;
   height: 750rpx;
+  background: #fff;
 }
 
 .product-image {
@@ -267,180 +366,300 @@ onLoad((options: any) => {
   height: 100%;
 }
 
-.flash-info {
-  padding: 32rpx;
+/* 价格卡片 */
+.price-card {
   background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-
-  &-price {
-    display: flex;
-    align-items: baseline;
-    margin-bottom: 16rpx;
-
-    .price-symbol {
-      font-size: 32rpx;
-      color: #fff;
-    }
-
-    .price-integer {
-      font-size: 56rpx;
-      font-weight: bold;
-      color: #fff;
-    }
-
-    .price-decimal {
-      font-size: 32rpx;
-      color: #fff;
-    }
-
-    .price-original {
-      margin-left: 16rpx;
-      font-size: 28rpx;
-      color: rgba(255, 255, 255, 0.8);
-      text-decoration: line-through;
-    }
-  }
+  padding: 32rpx;
+  color: #fff;
 }
 
-.product-info {
-  padding: 32rpx;
-  background: #fff;
+.price-main {
+  display: flex;
+  align-items: baseline;
   margin-bottom: 16rpx;
-
-  &-title {
-    display: block;
-    font-size: 36rpx;
-    font-weight: bold;
-    color: #333;
-    line-height: 1.5;
-  }
-
-  &-subtitle {
-    margin-top: 16rpx;
-    font-size: 28rpx;
-    color: #666;
-  }
-
-  &-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12rpx;
-    margin-top: 16rpx;
-  }
-
-  &-tag {
-    padding: 6rpx 16rpx;
-    background: #fff4f4;
-    color: #ff6b6b;
-    font-size: 22rpx;
-    border-radius: 6rpx;
-    border: 1rpx solid #ffcece;
-  }
-
-  &-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 24rpx;
-  }
-
-  &-price {
-    font-size: 48rpx;
-    font-weight: bold;
-  }
-
-  &-stock {
-    font-size: 24rpx;
-    color: #999;
-  }
 }
 
-.group-sessions {
-  padding: 32rpx;
-  background: #fff;
+.flash-price-section {
+  display: flex;
+  align-items: baseline;
+}
+
+.price-symbol {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.price-integer {
+  font-size: 64rpx;
+  font-weight: bold;
+  margin-left: 4rpx;
+}
+
+.price-decimal {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.original-price-section {
+  margin-left: 24rpx;
+}
+
+.original-price {
+  font-size: 24rpx;
+  opacity: 0.9;
+  text-decoration: line-through;
+}
+
+.stock-info {
+  display: flex;
+  gap: 32rpx;
   margin-bottom: 16rpx;
-
-  .group-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24rpx;
-  }
-
-  .group-title {
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #333;
-  }
-
-  .group-more {
-    font-size: 24rpx;
-    color: #999;
-  }
-
-  .group-item {
-    display: flex;
-    align-items: center;
-    padding: 24rpx 0;
-    border-bottom: 1rpx solid #f5f5f5;
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  .group-avatar {
-    width: 80rpx;
-    height: 80rpx;
-    border-radius: 50%;
-    margin-right: 16rpx;
-  }
-
-  .group-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-
-    .group-name {
-      font-size: 28rpx;
-      color: #333;
-    }
-
-    .group-missing {
-      font-size: 24rpx;
-      color: #ff6b6b;
-      margin-top: 4rpx;
-    }
-  }
-
-  .group-btn {
-    margin-left: 16rpx;
-    padding: 8rpx 24rpx;
-    background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-    color: #fff;
-    font-size: 24rpx;
-    border-radius: 32rpx;
-    border: none;
-  }
+  font-size: 24rpx;
+  opacity: 0.95;
 }
 
-.product-detail {
-  padding: 32rpx;
+.flash-countdown {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.countdown-label {
+  font-size: 24rpx;
+  opacity: 0.95;
+}
+
+/* 信息卡片 */
+.info-card {
   background: #fff;
+  margin: 16rpx;
+  border-radius: 16rpx;
+  padding: 32rpx;
+}
 
-  .detail-title {
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 24rpx;
-  }
+.product-header {
+  margin-bottom: 24rpx;
+}
 
-  .detail-content {
-    font-size: 28rpx;
-    color: #666;
-    line-height: 1.8;
+.product-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  line-height: 1.5;
+  display: block;
+}
+
+.product-subtitle {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.4;
+}
+
+.product-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.product-tag {
+  padding: 8rpx 20rpx;
+  background: linear-gradient(135deg, #fff4f4, #ffe8e8);
+  color: #ff6b6b;
+  font-size: 22rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid #ffcece;
+}
+
+.spec-row,
+.delivery-row,
+.service-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+
+  &:last-child {
+    border-bottom: none;
   }
 }
 
+.spec-label,
+.delivery-label,
+.service-label {
+  font-size: 28rpx;
+  color: #666;
+  width: 100rpx;
+}
+
+.spec-value,
+.delivery-value,
+.service-value {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.spec-value text,
+.delivery-location,
+.delivery-time {
+  margin-right: 8rpx;
+}
+
+.arrow {
+  color: #999;
+  font-size: 32rpx;
+}
+
+.delivery-value {
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.delivery-time {
+  font-size: 22rpx;
+  color: #ff6b6b;
+  margin-top: 4rpx;
+}
+
+.service-value {
+  gap: 24rpx;
+}
+
+.service-item {
+  color: #52c41a;
+  font-size: 24rpx;
+}
+
+/* 拼团卡片 */
+.group-card {
+  background: #fff;
+  margin: 16rpx;
+  border-radius: 16rpx;
+  padding: 32rpx;
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.group-icon {
+  font-size: 32rpx;
+}
+
+.group-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.group-count {
+  font-size: 22rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+.group-more {
+  font-size: 24rpx;
+  color: #ff6b6b;
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.group-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  background: #fff9f9;
+  border-radius: 12rpx;
+  border: 1rpx solid #ffe8e8;
+}
+
+.group-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  background: #f0f0f0;
+}
+
+.group-info {
+  flex: 1;
+}
+
+.group-name {
+  font-size: 26rpx;
+  color: #333;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.group-status {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.group-missing {
+  font-size: 22rpx;
+  color: #ff6b6b;
+}
+
+.group-btn {
+  padding: 12rpx 28rpx;
+  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+  color: #fff;
+  font-size: 24rpx;
+  border-radius: 32rpx;
+  border: none;
+}
+
+/* 详情卡片 */
+.detail-card {
+  background: #fff;
+  margin: 16rpx;
+  border-radius: 16rpx;
+  padding: 32rpx;
+}
+
+.detail-header {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 24rpx;
+  text-align: center;
+}
+
+.detail-content {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.8;
+}
+
+/* 底部操作栏 */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -448,72 +667,86 @@ onLoad((options: any) => {
   right: 0;
   display: flex;
   align-items: center;
-  padding: 16rpx 32rpx;
+  padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #fff;
-  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
 
-  .bar-icons {
-    display: flex;
-    flex: 1;
+.bar-icons {
+  display: flex;
+  gap: 24rpx;
+  margin-right: 24rpx;
+}
+
+.bar-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+
+  .iconfont {
+    font-size: 40rpx;
+    margin-bottom: 2rpx;
   }
 
-  .bar-icon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-right: 32rpx;
-    position: relative;
-
-    .uni-icon {
-      font-size: 44rpx;
-      color: #666;
-    }
-
-    text {
-      font-size: 20rpx;
-      color: #666;
-      margin-top: 4rpx;
-    }
-
-    .cart-badge {
-      position: absolute;
-      top: -8rpx;
-      right: -8rpx;
-      min-width: 32rpx;
-      height: 32rpx;
-      line-height: 32rpx;
-      padding: 0 8rpx;
-      background: #ff6b6b;
-      color: #fff;
-      font-size: 20rpx;
-      text-align: center;
-      border-radius: 16rpx;
-    }
+  text {
+    font-size: 20rpx;
+    color: #666;
   }
 
-  button {
-    flex: 1;
-    height: 80rpx;
-    line-height: 80rpx;
-    font-size: 28rpx;
-    border-radius: 40rpx;
-    border: none;
-
-    &::after {
-      border: none;
-    }
-  }
-
-  .btn-buy {
-    margin-right: 16rpx;
-    background: #ffd93d;
-    color: #333;
-  }
-
-  .btn-flash {
-    background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+  .cart-badge {
+    position: absolute;
+    top: -8rpx;
+    right: -8rpx;
+    min-width: 32rpx;
+    height: 32rpx;
+    line-height: 32rpx;
+    padding: 0 8rpx;
+    background: #ff6b6b;
     color: #fff;
+    font-size: 20rpx;
+    text-align: center;
+    border-radius: 16rpx;
   }
+}
+
+.bar-buttons {
+  flex: 1;
+  display: flex;
+  gap: 16rpx;
+}
+
+.bar-buttons button {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  font-size: 28rpx;
+  font-weight: bold;
+  border-radius: 40rpx;
+  border: none;
+  padding: 0;
+
+  &::after {
+    border: none;
+  }
+}
+
+.btn-cart {
+  background: #ffd93d;
+  color: #333;
+  flex: 0.8;
+}
+
+.btn-buy {
+  background: linear-gradient(135deg, #ffa940, #ffc53d);
+  color: #fff;
+}
+
+.btn-flash {
+  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+  color: #fff;
+  flex: 1.2;
 }
 </style>
