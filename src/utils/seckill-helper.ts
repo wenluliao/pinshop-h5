@@ -1,4 +1,4 @@
-import { http } from './request'
+import http from './request'
 import type { SeckillReq, SeckillRes, SeckillResult } from '@/types'
 
 /**
