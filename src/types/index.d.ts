@@ -159,6 +159,7 @@ export interface OrderItem {
   salePrice: number
   count: number
   totalAmount: number
+  specs?: string  // 商品规格，如 "颜色:红色,尺寸:L"
 }
 
 /**
@@ -214,18 +215,38 @@ export interface CreatePayReq {
  * 支付响应
  */
 export interface PayRes {
-  paymentId: string
-  payParams: any // 微信/支付宝支付参数
+  paymentId: string // 交易ID（Mock模式）或预支付ID
+  orderId: number
+  amount: number
+  payType: string
+  payUrl: string | null // Mock模式为null
+  // 微信支付参数（生产模式）
+  timeStamp?: string
+  nonceStr?: string
+  packageValue?: string
+  signType?: string
+  paySign?: string
+}
+
+/**
+ * 支付配置
+ */
+export interface PayConfig {
+  mode: 'mock' | 'production'
+  showTestButton: boolean
+  autoPayTimeout: number
 }
 
 /**
  * 支付状态
  */
-export enum PayStatus {
-  UNPAID = 'UNPAID',
-  PAID = 'PAID',
-  FAILED = 'FAILED',
-  REFUNDED = 'REFUNDED'
+export interface PayStatus {
+  orderId: number
+  status: number
+  statusText: string
+  payAmount: number
+  payTime: string | null
+  transactionId: string | null
 }
 
 /**

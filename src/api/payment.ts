@@ -2,6 +2,7 @@ import http from '@/utils/request'
 import type {
   CreatePayReq,
   PayRes,
+  PayConfig,
   PayStatus
 } from '@/types'
 
@@ -13,10 +14,31 @@ export function createPayment(data: CreatePayReq): Promise<PayRes> {
 }
 
 /**
+ * 获取支付配置
+ */
+export function getPaymentConfig(): Promise<PayConfig> {
+  return http.get('/v1/pay/config')
+}
+
+/**
  * 获取支付状态
  */
 export function getPaymentStatus(userId: number, orderId: number): Promise<PayStatus> {
   return http.get('/v1/pay/status', { userId, orderId })
+}
+
+/**
+ * 测试：模拟支付成功（仅Mock模式）
+ */
+export function testPaymentSuccess(paymentId: string): Promise<void> {
+  return http.post('/v1/pay/test/success', null, { params: { paymentId } })
+}
+
+/**
+ * 测试：模拟支付失败（仅Mock模式）
+ */
+export function testPaymentFail(paymentId: string): Promise<void> {
+  return http.post('/v1/pay/test/fail', null, { params: { paymentId } })
 }
 
 /**

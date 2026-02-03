@@ -24,12 +24,30 @@ export interface SettlementRequest {
   userId: number
 }
 
+export interface OrderItemRequest {
+  skuId: number
+  count: number
+  price: number
+}
+
+export interface CreateOrderRequest {
+  userId: number
+  receiverInfo: string
+  items: OrderItemRequest[]
+}
+
+export interface CreateOrderResponse {
+  orderId: number
+  totalAmount: number
+  status: number
+}
+
 // 结算预览
 export const settlementPreview = (data: SettlementRequest) => {
-  return http.post<{ data: SettlementPreview }>('/v1/settlement/preview', data)
+  return http.post('/v1/settlement/preview', data)
 }
 
 // 提交订单
-export const submitOrder = (data: any) => {
-  return http.post<{ data: any }>('/v1/settlement/submit', data)
+export const createOrder = (data: CreateOrderRequest) => {
+  return http.post<{ data: CreateOrderResponse }>('/v1/order/create', data)
 }

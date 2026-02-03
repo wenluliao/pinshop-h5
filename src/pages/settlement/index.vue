@@ -76,9 +76,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref, computed } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useCartStore, useUserStore } from '@/stores'
+import { createOrder } from '@/api/settlement'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -122,7 +123,28 @@ onLoad((options: any) => {
       }, 1500)
     }
   }
+
+  // 加载已选择的代收点
+  loadSelectedPickupPoint()
 })
+
+onShow(() => {
+  // 页面显示时重新加载代收点信息
+  loadSelectedPickupPoint()
+})
+
+// 加载已选择的代收点
+const loadSelectedPickupPoint = () => {
+  try {
+    const point = uni.getStorageSync('selectedPickupPoint')
+    if (point) {
+      selectedPoint.value = point
+      console.log('加载代收点:', point)
+    }
+  } catch (error) {
+    console.error('加载代收点失败:', error)
+  }
+}
 
 // 去选择代收点
 const goPickupPoint = () => {
@@ -132,7 +154,7 @@ const goPickupPoint = () => {
 }
 
 // 提交订单
-const submitOrder = () => {
+const submitOrder = async () => {
   if (!selectedPoint.value) {
     uni.showToast({
       title: '请选择代收点',
@@ -144,21 +166,49 @@ const submitOrder = () => {
   try {
     loading.value = true
 
-    // 模拟订单提交
+    // 构建收货信息JSON
+    const receiverInfo = JSON.stringify({
+      name: userStore.userInfo?.nickname || '用户',
+      phone: userStore.userInfo?.phone || '138****0000',
+      address: selectedPoint.value.address,
+      pickupPointId: selectedPoint.value.id,
+      pickupPointName: selectedPoint.value.name
+    })
+
+    // 构建订单项
+    const orderItems = cartItems.value.map(item => ({
+      skuId: item.skuId,
+      count: item.count,
+      price: item.salePrice
+    }))
+
+    // 构建订单请求
+    const orderData = {
+      userId: Number(userStore.userInfo!.userId),
+      receiverInfo: receiverInfo,
+      items: orderItems
+    }
+
+    console.log('提交订单:', orderData)
+
+    // 调用后端API创建订单
+    const result = await createOrder(orderData)
+    const orderId = result.orderId
+
     uni.showToast({
-      title: '订单提交成功',
+      title: '订单创建成功',
       icon: 'success'
     })
 
     // 清空购物车
     cartStore.clearSelected()
 
-    // 延迟跳转到订单列表
+    // 跳转到订单详情页进行支付
     setTimeout(() => {
-      uni.switchTab({
-        url: '/pages/order/index'
+      uni.redirectTo({
+        url: `/pages/order/detail?orderId=${orderId}`
       })
-    }, 1500)
+    }, 1000)
   } catch (error: any) {
     console.error('提交订单失败:', error)
     uni.showToast({
