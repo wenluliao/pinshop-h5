@@ -58,7 +58,8 @@ class HttpRequest {
         method: method.toUpperCase(),
         timeout: 30000,
         header: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json;charset=UTF-8',
+          'Accept': 'application/json;charset=UTF-8'
         }
       }
 
